@@ -68,6 +68,24 @@ export function FileView_ContextMenu(prop: {
 		}
 	}
 
+	async function deleteFileOrDirectoryFromDiskAndFileHost() {
+		if (prop.data instanceof FileHostFile) {
+			const fileHost = prop.data.fileHost;
+
+			if (fileHost) {
+				await fileHost.deleteFile(prop.data.relativePath);
+			}
+		} else if (!(prop.data instanceof FileHost)) {
+			const fileHost = FileHost.getFileHostFromAbsolutePath(prop.data.path);
+
+			if (fileHost) {
+				await fileHost.deleteDirectory(
+					FileHost.getRelativePathFromAbsolutePath(prop.data.path),
+				);
+			}
+		}
+	}
+
 	return (
 		<>
 			<UniqueOptions data={prop.data} />
@@ -94,7 +112,11 @@ export function FileView_ContextMenu(prop: {
 			</li>
 
 			<li>
-				<button type="button" class="text-error">
+				<button
+					type="button"
+					class="text-error"
+					onClick={deleteFileOrDirectoryFromDiskAndFileHost}
+				>
 					<TrashIcon />
 					Delete
 				</button>
