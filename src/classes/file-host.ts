@@ -218,8 +218,17 @@ export abstract class FileHost {
 	);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	clearDirContentCache() {
-		this._dirContentCache.clear();
+	clearDirContentCache(
+		...specificRelativePathToClear: RelativeDirectoryPath[]
+	) {
+		if (specificRelativePathToClear.length) {
+			specificRelativePathToClear.forEach((path) =>
+				this._dirContentCache.delete(convertPathToString(path)),
+			);
+		} else {
+			// Just clear the entire cache
+			this._dirContentCache.clear();
+		}
 	}
 
 	/** Returns all the files and directories in the directory at the path given.
@@ -322,8 +331,16 @@ export abstract class FileHost {
 	);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	clearDirectoryStatsCache() {
-		this._directoryStatsCache.clear();
+	clearDirectoryStatsCache(
+		...specificRelativePathToClear: RelativeDirectoryPath[]
+	) {
+		if (specificRelativePathToClear.length) {
+			specificRelativePathToClear.forEach((path) =>
+				this._directoryStatsCache.delete(convertPathToString(path)),
+			);
+		} else {
+			this._directoryStatsCache.clear();
+		}
 	}
 
 	/** Returns some metadata about a directory, since they aren't their own classes */

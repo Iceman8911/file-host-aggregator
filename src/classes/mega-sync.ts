@@ -11,6 +11,7 @@ import type {
 import type {
 	FileName,
 	RelativeDirectoryPath,
+	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
 } from "~/types/path";
 import {
@@ -259,39 +260,39 @@ export class MEGASyncFileHost extends FileHost {
 		return (await this._getAccountInfo()).spaceUsed;
 	}
 
-	async deleteFile(
-		file: RelativeFilePath,
+	/** Since files and directories aren't treated too differently in the library I'm using */
+	private async _deleteFileOrDirectory(
+		fileOrDir: RelativeFileOrDirectoryPath,
 		permanent = false,
-	): Promise<boolean> {
+	) {
 		const _storage = await this._getStorage();
-		const fileToDelete = _storage.root.navigate(file);
+		const fileToDelete = _storage.root.navigate(fileOrDir);
 		if (!fileToDelete) return false;
 
 		await fileToDelete.delete(permanent);
 		await hfs.delete(
-			convertPathToString(this.getAbsolutePathFromRelativePath(file)),
+			convertPathToString(this.getAbsolutePathFromRelativePath(fileOrDir)),
 		);
-		this.clearDirContentCache();
-		this.clearDirectoryStatsCache();
+
+		const parentDirectory =
+			MEGASyncFileHost.getParentDirectoryFromPath(fileOrDir);
+		this.clearDirContentCache(parentDirectory);
+		this.clearDirectoryStatsCache(parentDirectory);
 
 		return true;
 	}
 
+	async deleteFile(
+		file: RelativeFilePath,
+		permanent = false,
+	): Promise<boolean> {
+		return this._deleteFileOrDirectory(file, permanent);
+	}
+
 	async deleteDirectory(
 		directory: RelativeDirectoryPath,
-		permanent?: true,
+		permanent = false,
 	): Promise<boolean> {
-		const _storage = await this._getStorage();
-		const directoryToDelete = _storage.root.navigate(directory);
-		if (!directoryToDelete) return false;
-
-		await directoryToDelete.delete(permanent);
-		await hfs.delete(
-			convertPathToString(this.getAbsolutePathFromRelativePath(directory)),
-		);
-		this.clearDirContentCache();
-		this.clearDirectoryStatsCache();
-
-		return true;
+		return this._deleteFileOrDirectory(directory, permanent);
 	}
 }
