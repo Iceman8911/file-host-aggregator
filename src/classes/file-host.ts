@@ -16,14 +16,16 @@ import type {
 	AbsoluteFileOrDirectoryPath,
 	AbsoluteFilePath,
 	AnyDirectoryPath,
+	AnyFileOrDirectoryPath,
 	AnyFilePath,
 	FileName,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
+	RootPath,
 } from "~/types/path";
 import { generateUUID } from "~/utils/other";
-import { convertPathToString } from "~/utils/path";
+import { convertPathToString, isAbsolutePath } from "~/utils/path";
 import { FileHostFile } from "./file-host-file";
 
 /** Every file host (e.g Mega, MediaFire, etc) must implement this.
@@ -89,16 +91,20 @@ export abstract class FileHost {
 		return FileHost.collection.get(path[1]) ?? null;
 	}
 
-	protected static _getDirectoryFromFilePath(
-		filePath: AbsoluteFilePath,
-	): AbsoluteDirectoryPath;
-	protected static _getDirectoryFromFilePath(
-		filePath: RelativeFilePath,
-	): RelativeDirectoryPath;
-	protected static _getDirectoryFromFilePath(
-		filePath: AnyFilePath,
+	static getParentDirectoryFromPath(
+		filePath: AbsoluteFileOrDirectoryPath,
+	): AbsoluteDirectoryPath | ReturnType<FileHost["root"]>;
+	static getParentDirectoryFromPath(
+		filePath: RelativeFileOrDirectoryPath,
+	): RelativeDirectoryPath | RootPath;
+	static getParentDirectoryFromPath(
+		filePath: AnyFileOrDirectoryPath,
 	): AnyDirectoryPath {
-		/** Get the directory from the file path */
+		// Don't go deeper than the "root" in absolute paths
+		if (isAbsolutePath(filePath) && filePath.length === 3) {
+			return filePath.slice(0, 2);
+		}
+
 		return filePath.slice(0, -1);
 	}
 
