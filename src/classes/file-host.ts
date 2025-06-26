@@ -1,11 +1,17 @@
 import type { gEnumFileHost } from "~/declarations/enums";
-import type { FilePath } from "~/declarations/types";
+import { generateUUID } from "~/declarations/functions";
+import type { Brand, FilePath, UUID } from "~/declarations/types";
 import gMimeTypeClientFunctions from "~/server/mime-types/mime-types-client";
 
 const { extension, lookup } = gMimeTypeClientFunctions;
 
+type FileHostID = Brand<UUID, "FileHostID">;
+
 /** Every file host (e.g Mega, MediaFire, etc) must implement this */
-export abstract class FileHost<TFileHost extends gEnumFileHost> {
+export abstract class FileHost<
+	TFileHost extends gEnumFileHost = gEnumFileHost,
+> {
+	readonly id: FileHostID = generateUUID<FileHostID>();
 	dateCreated = new Date();
 	abstract readonly type: TFileHost;
 
@@ -53,8 +59,14 @@ class FileHostFile {
 	private _file: File | null = null;
 	/** Cache for the file's mimetype  */
 	private _mimeType: string | null = null;
+	private _fileHostId: FileHostID;
 
-	constructor(args: FileHostFilePublicProps & { fileUrl: URL | string }) {
+	constructor(
+		args: FileHostFilePublicProps & {
+			fileUrl: URL | string;
+			fileHostId: FileHostID;
+		},
+	) {
 		const [name, ext] = args.name.split(/\.(?!.*\.)/);
 		this._name = name;
 		this._ext = ext;
@@ -62,6 +74,7 @@ class FileHostFile {
 		this.dateCreated = args.dateCreated;
 		this.dateEdited = args.dateEdited;
 		this._url = new URL(args.fileUrl);
+		this._fileHostId = args.fileHostId;
 
 		// TODO - Determine file type without necessarily downloading the entire file
 	}
@@ -144,5 +157,11 @@ class FileHostFile {
 		this._mimeType = mimeType;
 
 		return mimeType;
+	}
+
+	get fileHost(): FileHost {
+		// TODO: Logic to get the file host from an in memory map
+
+		return {} as unknown as FileHost;
 	}
 }
