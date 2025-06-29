@@ -5,5 +5,5 @@ export default defineConfig({
 	vite: {
 		plugins: [tailwindcss()],
 	},
-	server: { esbuild: { options: { target: "esnext" } } },
+	// server: { esbuild: { options: { target: "esnext" } } },
 });

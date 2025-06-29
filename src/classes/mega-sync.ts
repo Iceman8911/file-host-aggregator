@@ -1,14 +1,14 @@
-import { gEnumFileHost } from "~/declarations/enums";
+import { gFileHosts } from "~/declarations/enums";
 import { FileHost } from "./file-host";
 
-// class MegaSyncFileHost extends FileHost<gEnumFileHost.MEGA> {
-//   type = gEnumFileHost.MEGA;
+export class MegaSyncFileHost extends FileHost {
+	type = gFileHosts.MEGA;
 
-//   constructor(...args: ConstructorParameters<typeof FileHost>) {
-//     super(...args);
-//   }
+	constructor(...args: ConstructorParameters<typeof FileHost>) {
+		super(...args);
+	}
 
-//   getFiles() {
-//     return {};
-//   }
-// }
+	// getFiles() {
+	// 	return {};
+	// }
+}
