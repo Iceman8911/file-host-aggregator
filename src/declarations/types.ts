@@ -12,5 +12,6 @@ export type ClassPropsOnly<T> = {
 
 // Regular Types
 /** Represents the path of a file from it's root (file host) */
-export type FilePath = "./" | `./${string}/` | `/${string}/`;
+export type FilePath = "/" | `/${string}`;
+export type FilePathWithExtension = `/${string}.${string}`;
 export type UUID = ReturnType<typeof crypto.randomUUID>;
