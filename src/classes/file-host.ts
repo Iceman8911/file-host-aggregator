@@ -1,4 +1,5 @@
 import { hfs } from "@humanfs/web";
+import { parse, stringifyAsync } from "@worker-tools/structured-json";
 import type { gFileHosts } from "~/declarations/enums";
 import { Directory } from "~/declarations/file-system";
 import { generateUUID } from "~/declarations/functions";
@@ -6,6 +7,7 @@ import type {
 	Brand,
 	ClassPropsOnly,
 	FilePath,
+	FilePathWithExtension,
 	ResultType,
 	UUID,
 } from "~/declarations/types";
@@ -26,6 +28,13 @@ export abstract class FileHost {
 	readonly id: FileHostID = generateUUID<FileHostID>();
 	dateCreated = new Date();
 	abstract readonly type: gFileHosts;
+	/** In-memory file cache
+	 *
+	 * Indexed by the file path, e.g `/downloads`, etc and the value is an array of all the **files** / **sub-folders** in the path.
+	 *   - **Sub-folders** are represented as strings
+	 *   - Paths can point to a single file, e.g `/downloads/cat.jpg` -> `IMAGE FILE`
+	 */
+	// private _files = new Map<FilePath, Array<FileHostFile | string>>();
 
 	constructor(
 		public name: string,
@@ -34,11 +43,11 @@ export abstract class FileHost {
 		fileHostMemoryCollection.set(this.id, this);
 	}
 
-	/** Returns a collection of all the files in the file host, while caching it */
-	abstract getFiles(
+	/**Caches all files from the file host in the file system */
+	abstract downloadFiles(
 		/** If `true`, only the bare metadata (like path data, names, sizes) are retrieved, but the file's actual content is not */
 		getMetadata?: boolean,
-	): Map<FilePath, FileHostFile<this>>;
+	): Promise<void>;
 
 	/** Takes a regular file and the path to upload it to.
 	 *
@@ -49,10 +58,27 @@ export abstract class FileHost {
 		path: FilePath,
 		/** In case the file's name should be overwritten */
 		name?: string,
-	): ResultType<URL>;
+	): Promise<ResultType<URL>>;
 
 	/** Attempts to delete a file from the file host */
-	abstract deleteFile(file: FileHostFile<this>): ResultType<never>;
+	abstract deleteFile(file: FilePathWithExtension): ResultType<never>;
+
+	async hasFile(path: FilePathWithExtension): Promise<boolean> {
+		return hfs.isFile(path);
+	}
+
+	/**  */
+	async getFile(
+		path: FilePathWithExtension,
+	): Promise<FileHostFile<this> | null> {
+		if (!(await hfs.isFile(path))) return null;
+
+		const possibleFileData = await hfs.text(path);
+
+		if (!possibleFileData) return null;
+
+		return FileHostFile.deserialize(possibleFileData, this);
+	}
 
 	clearCache(): void {
 		// this._files = new Map();
@@ -153,22 +179,17 @@ enum FileType {
 	OTHER,
 }
 
-type FileHostFilePublicProps = {
-	name: string;
-	path: FilePath;
-	dateCreated: Date;
-	dateEdited: Date;
-};
-
 /** A representation of a file fetched from a file-host. At first, it only contains the bare metadata but not the actual file. When interacted with, the actual file will be downloaded */
-class FileHostFile<TFileHostParent extends FileHostImplementations> {
+class FileHostFile<
+	TFileHostParent extends FileHostImplementations = FileHostImplementations,
+> {
 	/** The name of the file, without the extension */
 	private _name: string;
 	/** The extension of the file, e.g `webp`, `7z`, etc */
 	private _ext: string;
 	readonly path: FilePath;
-	readonly dateCreated: Date;
-	dateEdited: Date;
+	readonly dateCreated = new Date();
+	dateEdited = new Date();
 	private readonly _url: URL;
 	/** image string, could be a url, or raw base64 data */
 	private _thumbnail: string | null = null;
@@ -177,27 +198,18 @@ class FileHostFile<TFileHostParent extends FileHostImplementations> {
 	private _mimeType: string | null = null;
 	private _fileHostId: FileHostID;
 
-	constructor(
-		args: FileHostFilePublicProps & {
-			fileUrl: URL | string;
-			fileHostId: FileHostID;
-		},
-	) {
-		const {
-			dateCreated,
-			dateEdited,
-			fileHostId,
-			fileUrl,
-			name: argName,
-			path,
-		} = args;
+	constructor(args: {
+		name: string;
+		path: FilePath;
+		fileUrl: URL | string;
+		fileHostId: FileHostID;
+	}) {
+		const { fileHostId, fileUrl, name: argName, path } = args;
 
 		const [name, ext] = argName.split(/\.(?!.*\.)/);
 		this._name = name;
 		this._ext = ext;
 		this.path = path;
-		this.dateCreated = dateCreated;
-		this.dateEdited = dateEdited;
 		this._url = new URL(fileUrl);
 		this._fileHostId = fileHostId;
 
@@ -297,5 +309,30 @@ class FileHostFile<TFileHostParent extends FileHostImplementations> {
 		// TODO: Logic to get the file host from an in memory map
 
 		return {} as unknown as TFileHostParent;
+	}
+
+	static async serialize(instance: FileHostFile) {
+		return stringifyAsync(instance);
+	}
+
+	static async deserialize<TFileHost extends FileHostImplementations>(
+		data: string,
+		fileHostParent: TFileHost,
+	) {
+		const deserializedData: FileHostFile<TFileHost> = await parse(data);
+		console.log("Deserialized Data is:", deserializedData);
+		const newClass = new FileHostFile<TFileHost>({
+			fileHostId: fileHostParent.id,
+			fileUrl: window.location.href,
+			name: "",
+			path: "/",
+		});
+
+		for (const key in deserializedData) {
+			//@ts-expect-error
+			newClass[key] = data[key];
+		}
+
+		return newClass;
 	}
 }
