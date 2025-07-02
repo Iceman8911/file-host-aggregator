@@ -12,7 +12,7 @@ export default function Nav() {
 	const ROUTE_LINKS = [
 		{ icon: HouseIcon, name: "Home", route: "/" },
 		{ icon: FilesIcon, name: "Files", route: "/files" },
-		{ icon: FavouritesIcon, name: "Favourites", route: "/about" },
+		{ icon: FavouritesIcon, name: "Favourites", route: "/favourites" },
 	] as const satisfies ReadonlyArray<{
 		route: string;
 		name: string;
