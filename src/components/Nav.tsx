@@ -38,7 +38,7 @@ export default function Nav() {
 					class="drawer-overlay"
 				></label>
 				<ul
-					class={`menu bg-base-200 text-base-content min-h-full ${DRAWER_WIDTH} p-4 text-xl font-bold`}
+					class={`menu bg-base-200 text-base-content min-h-full ${DRAWER_WIDTH} py-4 px-2 text-xl font-bold`}
 				>
 					<For each={ROUTE_LINKS}>
 						{({ icon, name, route }) => (

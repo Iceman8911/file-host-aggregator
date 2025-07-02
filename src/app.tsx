@@ -14,7 +14,7 @@ export default function App() {
 	return (
 		<Router
 			root={(props) => (
-				<div class="flex">
+				<div class="flex w-[100vw] h-[100vh]">
 					<Nav />
 					<Suspense>{props.children}</Suspense>
 				</div>

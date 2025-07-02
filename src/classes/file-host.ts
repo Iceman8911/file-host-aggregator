@@ -1,5 +1,6 @@
 import { hfs } from "@humanfs/web";
 import { parse, stringifyAsync } from "@worker-tools/structured-json";
+import { signalify } from "classy-solid";
 import type { gFileHosts } from "~/declarations/enums";
 import { Directory } from "~/declarations/file-system";
 import { generateUUID } from "~/declarations/functions";
@@ -36,6 +37,7 @@ export abstract class FileHost {
 		public apiKey: string,
 	) {
 		FileHost.collection.set(this.id, this);
+		signalify(this);
 	}
 
 	/**Caches all files from the file host in the file system */
