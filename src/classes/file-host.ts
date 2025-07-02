@@ -21,26 +21,21 @@ export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 const { extension, lookup } = gMimeTypeClientFunctions;
 
 const DEFAULT_FILE_EXTENSION = "bin";
-const fileHostMemoryCollection = new Map<FileHostID, FileHostImplementations>();
 
 /** Every file host (e.g Mega, MediaFire, etc) must implement this */
 export abstract class FileHost {
 	readonly id: FileHostID = generateUUID<FileHostID>();
 	dateCreated = new Date();
 	abstract readonly type: gFileHosts;
-	/** In-memory file cache
-	 *
-	 * Indexed by the file path, e.g `/downloads`, etc and the value is an array of all the **files** / **sub-folders** in the path.
-	 *   - **Sub-folders** are represented as strings
-	 *   - Paths can point to a single file, e.g `/downloads/cat.jpg` -> `IMAGE FILE`
-	 */
-	// private _files = new Map<FilePath, Array<FileHostFile | string>>();
+
+	/** In memory collection of all created file hosts */
+	static collection = new Map<FileHostID, FileHostImplementations>();
 
 	constructor(
 		public name: string,
 		public apiKey: string,
 	) {
-		fileHostMemoryCollection.set(this.id, this);
+		FileHost.collection.set(this.id, this);
 	}
 
 	/**Caches all files from the file host in the file system */
@@ -159,7 +154,7 @@ export async function initFileHosts(): Promise<ReadonlyArray<FileHost>> {
 	}
 
 	fileHosts.forEach((host) => {
-		fileHostMemoryCollection.set(host.id, host);
+		FileHost.collection.set(host.id, host);
 	});
 
 	return fileHosts;
@@ -215,7 +210,7 @@ class FileHostFile<
 
 		// TODO - Determine file type without necessarily downloading the entire file
 
-		const parentFileHost = fileHostMemoryCollection.get(fileHostId);
+		const parentFileHost = FileHost.collection.get(fileHostId);
 		const { _file } = this;
 		if (parentFileHost && _file) {
 			// Store the file in the filesystem.
