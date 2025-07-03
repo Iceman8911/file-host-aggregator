@@ -26,7 +26,7 @@ export default function Nav() {
 				{/* <!-- Page content here --> */}
 				<label
 					for="my-drawer-2"
-					class="btn btn-primary drawer-button rounded-l-none p-2 sm:hidden"
+					class="btn btn-primary btn-sm opacity-85 drawer-button rounded-l-none px-1 sm:hidden"
 				>
 					<MenuIcon aria-label="drawer icon" />
 				</label>

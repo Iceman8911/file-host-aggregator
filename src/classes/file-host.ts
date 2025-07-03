@@ -174,10 +174,6 @@ export async function initFileHosts(): Promise<
 		}
 	}
 
-	fileHosts.forEach((host) => {
-		FileHost.collection.set(host.id, host);
-	});
-
 	return fileHosts;
 }
 

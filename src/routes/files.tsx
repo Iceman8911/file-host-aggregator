@@ -1,3 +1,9 @@
+import FileView from "~/components/file-view";
+
 export default function Files() {
-	return <main class="text-center mx-auto text-gray-700 p-4">Files</main>;
+	return (
+		<main class="p-4 size-full">
+			<FileView />
+		</main>
+	);
 }
