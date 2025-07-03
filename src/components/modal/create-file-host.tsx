@@ -25,6 +25,8 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 	const [fileHostInitData, setFileHostInitData] = createStore<FileHostInitData>(
 		DEFAULT_FILE_HOST_INIT_DATA,
 	);
+	const [isInitializingFileHost, setIsInitializingFileHost] =
+		createSignal(false);
 
 	let createFileHostForm!: HTMLFormElement;
 
@@ -134,6 +136,8 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 									class="btn btn-primary btn-soft mt-4 col-span-2"
 									onClick={async (_) => {
 										if (createFileHostForm.reportValidity()) {
+											setIsInitializingFileHost(true);
+
 											switch (fileHost()) {
 												case gFileHosts.MEGA: {
 													const { MegaSyncFileHost } = await import(
@@ -150,6 +154,7 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 												}
 											}
 
+											setIsInitializingFileHost(false);
 											createFileHostForm.reset();
 											setFileHostInitData(DEFAULT_FILE_HOST_INIT_DATA);
 											(
@@ -166,6 +171,13 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 						</fieldset>
 					</form>
 				)}
+			</Show>
+
+			{/* Loading mode after attempting to initialize a file host */}
+			<Show when={isInitializingFileHost()}>
+				<div class="absolute top-0 left-0 size-full bg-black opacity-50 flex justify-center items-center">
+					<span class="loading loading-spinner loading-xl text-primary"></span>
+				</div>
 			</Show>
 		</GenericModal>
 	);
