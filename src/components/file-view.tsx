@@ -22,7 +22,9 @@ export default function FileView() {
 		| null
 	>(() => {
 		if (gFilePathTracker.fileHost)
-			return gFilePathTracker.fileHost.getDirContents(gFilePathTracker.path);
+			return gFilePathTracker.fileHost.getDirContents(
+				`${gFilePathTracker.fileHost.root()}${gFilePathTracker.path}`,
+			);
 
 		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});

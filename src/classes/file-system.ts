@@ -1,4 +1,5 @@
 import type { FilePath, FilePathWithExtension } from "~/declarations/types";
+import { ROOT_PATH } from "~/declarations/variables";
 
 abstract class BaseFile {
 	dateCreated = new Date();
@@ -141,7 +142,7 @@ class FSDirectory extends BaseFile {
 			childToStore: FSChild,
 			parent: FSDirectory = this,
 		): void => {
-			if (path === "/") {
+			if (path === ROOT_PATH) {
 				parent._addDirectChild(childToStore);
 				return;
 			}

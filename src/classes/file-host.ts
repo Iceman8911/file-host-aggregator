@@ -13,6 +13,7 @@ import type {
 	ResultType,
 	UUID,
 } from "~/declarations/types";
+import { ROOT_PATH } from "~/declarations/variables";
 import gMimeTypeClientFunctions from "~/server/mime-types/mime-types-client";
 import type { MegaSyncFileHost } from "./mega-sync";
 
@@ -97,15 +98,15 @@ export abstract class FileHost {
 	): Promise<Array<
 		{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
 	> | null> {
-		if (path !== "/" && (await hfs.isFile(path))) {
+		const res: Array<
+			{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
+		> = [];
+
+		if (await hfs.isFile(path)) {
 			const possibleFile = await this.getFile(path as FilePathWithExtension);
 
 			if (possibleFile) return [{ type: "file", file: possibleFile }];
 		}
-
-		const res: Array<
-			{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
-		> = [];
 
 		if (await hfs.isDirectory(path)) {
 			for await (const entry of hfs.list(path)) {
@@ -381,7 +382,7 @@ export class FileHostFile<
 			fileHostId: fileHostParent.id,
 			fileUrl: window.location.href,
 			name: "",
-			path: "/",
+			path: ROOT_PATH,
 		});
 
 		for (const key in deserializedData) {
