@@ -1,11 +1,30 @@
+import { createAsync } from "@solidjs/router";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show, Suspense } from "solid-js";
+import { produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
-import { FileHost } from "~/classes/file-host";
+import {
+	FileHost,
+	type FileHostFile,
+	type FileHostImplementations,
+} from "~/classes/file-host";
 import { gFileHostIcons } from "~/declarations/icons";
+import {
+	gFilePathTracker,
+	gSetFilePathTracker,
+} from "~/declarations/variables";
 
 export default function FileView() {
-	const fileHosts = FileHost.collection;
+	const filesOrFileHosts = createAsync<
+		| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
+		| FileHostImplementations[]
+		| null
+	>(() => {
+		if (gFilePathTracker.fileHost)
+			return gFilePathTracker.fileHost.getDirContents(gFilePathTracker.path);
+
+		return Promise.resolve(Array.from(FileHost.collection.values()));
+	});
 
 	const [iconSize, setIconSize] = createSignal<"XS" | "S" | "M" | "L" | "XL">(
 		"M",
@@ -32,28 +51,47 @@ export default function FileView() {
 
 			{/* Folder/File view */}
 			<div class="grow flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<For each={Array.from(fileHosts)}>
-					{([_, fileHost]) => {
-						const { name, type } = fileHost;
+				<Suspense>
+					<For each={filesOrFileHosts()}>
+						{(val) => {
+							return (
+								<button
+									type="button"
+									class="flex flex-col justify-center items-center size-fit btn btn-primary btn-soft"
+									onClick={(_) => {
+										gSetFilePathTracker(
+											produce((state) => {
+												if (val instanceof FileHost) {
+													state.fileHost = val;
+													state.path = "/";
+												} else {
+													state.path +=
+														val.type === "dir"
+															? `${state.path}/${val.name}`
+															: val.file.path;
+												}
+											}),
+										);
+									}}
+								>
+									<div class="relative size-fit">
+										<HardDriveIcon class="size-16" />
+										<Show when={val instanceof FileHost}>
+											<Dynamic
+												component={gFileHostIcons[(val as FileHost).type]}
+												class="absolute right-0 bottom-0 size-6 opacity-75"
+											/>
+										</Show>
+									</div>
 
-						return (
-							<button
-								type="button"
-								class="flex flex-col justify-center items-center size-fit btn btn-primary btn-soft"
-							>
-								<div class="relative size-fit">
-									<HardDriveIcon class="size-16" />
-									<Dynamic
-										component={gFileHostIcons[type]}
-										class="absolute right-0 bottom-0 size-6 opacity-75"
-									/>
-								</div>
-
-								<p class="font-bold">{name}</p>
-							</button>
-						);
-					}}
-				</For>
+									<p class="font-bold">
+										{val.type === "file" ? val.file.name() : val.name}
+									</p>
+								</button>
+							);
+						}}
+					</For>
+				</Suspense>
 			</div>
 		</div>
 	);

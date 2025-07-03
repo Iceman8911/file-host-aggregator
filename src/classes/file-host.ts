@@ -80,6 +80,50 @@ export abstract class FileHost {
 		return FileHostFile.deserialize(possibleFileData, this);
 	}
 
+	/** @returns `null` if the directory doesn't exist */
+	async getDirContents(path: FilePathWithExtension): Promise<
+		| (Array<{ type: "file"; file: FileHostFile<this> }> & {
+				length: 1;
+		  })
+		| null
+	>;
+	async getDirContents(
+		path: FilePath | FilePathWithExtension,
+	): Promise<Array<
+		{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
+	> | null>;
+	async getDirContents(
+		path: FilePath | FilePathWithExtension,
+	): Promise<Array<
+		{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
+	> | null> {
+		if (path !== "/" && (await hfs.isFile(path))) {
+			const possibleFile = await this.getFile(path as FilePathWithExtension);
+
+			if (possibleFile) return [{ type: "file", file: possibleFile }];
+		}
+
+		const res: Array<
+			{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
+		> = [];
+
+		if (await hfs.isDirectory(path)) {
+			for await (const entry of hfs.list(path)) {
+				const { isDirectory, isFile, name: _name } = entry;
+				const name = _name as `${string}.${string}`;
+
+				if (isFile) {
+					const possibleFile = await this.getFile(`${path}/${name}`);
+					if (possibleFile) res.push({ file: possibleFile, type: "file" });
+				} else if (isDirectory) {
+					res.push({ name, type: "dir" });
+				}
+			}
+		}
+
+		return res.length ? res : null;
+	}
+
 	clearCache(): void {
 		// this._files = new Map();
 	}
@@ -152,7 +196,7 @@ export async function initFileHosts(): Promise<
 	for await (const entry of hfs.list(fileHostRoot())) {
 		const { isFile, name } = entry;
 
-		if (isFile) {
+		if (name.endsWith(".bin") && isFile) {
 			const fileHostId = name as FileHostID;
 			const props: FileHostClassProps = await hfs.json(
 				fileHostRoot(fileHostId),
@@ -192,7 +236,7 @@ enum FileType {
 }
 
 /** A representation of a file fetched from a file-host. At first, it only contains the bare metadata but not the actual file. When interacted with, the actual file will be downloaded */
-class FileHostFile<
+export class FileHostFile<
 	TFileHostParent extends FileHostImplementations = FileHostImplementations,
 > {
 	/** The name of the file, without the extension */
