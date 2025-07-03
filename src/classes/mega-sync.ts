@@ -1,5 +1,9 @@
 import type { MutableFile } from "megajs";
 import { gFileHosts } from "~/declarations/enums";
+import {
+	gIsUserConnectedToInternet,
+	gThrowIfNoInternet,
+} from "~/declarations/functions";
 import type {
 	ClassPropsOnly,
 	FilePath,
@@ -16,7 +20,7 @@ export class MegaSyncFileHost extends FileHost {
 		public name: string,
 		public email: string,
 		public password: string,
-		private _storage: typeof MegaSyncStorage.prototype,
+		private _storage: typeof MegaSyncStorage.prototype | null,
 	) {
 		super(name);
 	}
@@ -35,31 +39,37 @@ export class MegaSyncFileHost extends FileHost {
 					restore: true;
 			  }),
 	) {
+		const { email, name, password } = arg;
+		let instance: MegaSyncFileHost;
+
 		try {
-			const { email, name, password } = arg;
+			gThrowIfNoInternet();
+
 			const storage = await new MegaSyncStorage({
 				email,
 				password,
 				userAgent: "FileHostAggregator/0.1",
 			}).ready;
 
-			const instance = new MegaSyncFileHost(name, email, password, storage);
-
-			// Loop through and restore the props
-			if (arg.restore) {
-				for (const key in arg) {
-					//@ts-expect-error
-					instance[key] = arg[key];
-				}
-			}
-
-			// Save after successful initialization
-			instance.save();
-			return instance;
+			instance = new MegaSyncFileHost(name, email, password, storage);
 		} catch (_) {
-			alert("Invalid Mega Sync Credentials");
-			return null;
+			console.error(
+				"Unable to connect to MEGA Sync. Some features may be unavailable",
+			);
+			instance = new MegaSyncFileHost(name, email, password, null);
 		}
+
+		// Loop through and restore the props
+		if (arg.restore) {
+			for (const key in arg) {
+				//@ts-expect-error
+				instance[key] = arg[key];
+			}
+		}
+
+		// Save after successful initialization
+		instance.save();
+		return instance;
 	}
 
 	async uploadFile(
@@ -68,9 +78,12 @@ export class MegaSyncFileHost extends FileHost {
 		name: string,
 	): Promise<ResultType<URL>> {
 		try {
+			const { _storage } = this;
+			if (!_storage) throw Error("Mega storage not initialized");
+
 			const folder =
-				this._storage.find((file) => file.name === path) ??
-				(await this._storage.mkdir(path));
+				_storage.find((file) => file.name === path) ??
+				(await _storage.mkdir(path));
 			const uploadedFile = (await folder.upload(
 				{ name: name, size: file.size },
 				await file.text(),
