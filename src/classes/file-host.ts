@@ -1,7 +1,7 @@
 import { hfs } from "@humanfs/web";
 import { parse, stringifyAsync } from "@worker-tools/structured-json";
 import { signalify } from "classy-solid";
-import type { gFileHosts } from "~/declarations/enums";
+import { gFileHosts } from "~/declarations/enums";
 import { Directory } from "~/declarations/file-system";
 import { generateUUID } from "~/declarations/functions";
 import type {
@@ -15,7 +15,7 @@ import type {
 import gMimeTypeClientFunctions from "~/server/mime-types/mime-types-client";
 import type { MegaSyncFileHost } from "./mega-sync";
 
-type FileHostID = Brand<UUID, "FileHostID">;
+export type FileHostID = Brand<UUID, "FileHostID">;
 export type FileHostImplementations = MegaSyncFileHost;
 export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 
@@ -32,12 +32,14 @@ export abstract class FileHost {
 	/** In memory collection of all created file hosts */
 	static collection = new Map<FileHostID, FileHostImplementations>();
 
-	constructor(
-		public name: string,
-		public apiKey: string,
-	) {
+	constructor(public name: string) {
 		FileHost.collection.set(this.id, this);
-		signalify(this);
+		// signalify(this);
+	}
+
+	/** **MUST BE IMPLEMENTED IN DERIVED CLASSES BEFOR USE** */
+	static init(...args: unknown[]): Promise<FileHostImplementations> {
+		throw new Error("Method not implemented! Use derived class");
 	}
 
 	/**Caches all files from the file host in the file system */
@@ -51,10 +53,10 @@ export abstract class FileHost {
 	 * Returns the url to the uploaded file if successful
 	 */
 	abstract uploadFile(
-		file: File,
+		file: Blob,
 		path: FilePath,
 		/** In case the file's name should be overwritten */
-		name?: string,
+		name: string,
 	): Promise<ResultType<URL>>;
 
 	/** Attempts to delete a file from the file host */
@@ -106,7 +108,7 @@ export abstract class FileHost {
 	 *
 	 * e.g `/file_host/123po12`
 	 */
-	get root() {
+	root() {
 		return FileHost.root(this.id);
 	}
 
@@ -122,35 +124,53 @@ export abstract class FileHost {
 	}
 
 	/** Returns a serializable version of the class that the class can be instantiated with `.import()` */
-	export(): ClassPropsOnly<typeof this> {
-		return { ...this };
-	}
+	/** Returns a plain object version of the class */
+	abstract export(): unknown;
 
-	/** Restores data exportd with `.export()` */
-	import(data: ClassPropsOnly<typeof this>) {
-		for (const key in data) {
-			this[key] = data[key];
-		}
-	}
+	// /** Restores data exportd with `.export()` */
+	// import(data: ClassPropsOnly<typeof this>) {
+	// 	for (const key in data) {
+	// 		this[key] = data[key];
+	// 	}
+	// }
+
+	/** In bytes */
+	abstract spaceTotal(): Promise<number>;
+	/** In bytes */
+	abstract spaceUsed(): Promise<number>;
 }
 
 /** Initializes all stored file hosts and returns an array of them as result */
-export async function initFileHosts(): Promise<ReadonlyArray<FileHost>> {
-	const fileHosts: Array<FileHost> = [];
+export async function initFileHosts(): Promise<
+	ReadonlyArray<FileHostImplementations>
+> {
+	const fileHosts: Array<FileHostImplementations> = [];
 	const { root: fileHostRoot } = FileHost;
 
 	// Load all file hosts from the disk
 	for await (const entry of hfs.list(fileHostRoot())) {
 		const { isFile, name } = entry;
+		console.log(entry);
 
 		if (isFile) {
 			const fileHostId = name as FileHostID;
-			const { type }: FileHostClassProps = await hfs.json(
+			const props: FileHostClassProps = await hfs.json(
 				fileHostRoot(fileHostId),
 			);
+			const { type } = props;
 
 			// TODO: Depending on the `.type`, instantiate the appropriate class
 			switch (type) {
+				case gFileHosts.MEGA: {
+					const { MegaSyncFileHost } = await import("./mega-sync");
+					const instance = await MegaSyncFileHost.init({
+						...props,
+						restore: true,
+					});
+					console.log("Instance is:", instance);
+					if (instance) fileHosts.push(instance);
+					break;
+				}
 			}
 		}
 	}
@@ -217,7 +237,7 @@ class FileHostFile<
 		if (parentFileHost && _file) {
 			// Store the file in the filesystem.
 			_file.arrayBuffer().then((buffer) => {
-				hfs.write(parentFileHost.root, buffer);
+				hfs.write(parentFileHost.root(), buffer);
 			});
 		}
 	}

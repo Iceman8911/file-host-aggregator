@@ -1,15 +1,30 @@
 import { Entries } from "@solid-primitives/keyed";
 import { createSignal, Match, Show, Switch } from "solid-js";
+import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import { gFileHosts } from "~/declarations/enums";
 import { gFileHostIcons } from "~/declarations/icons";
 import { GenericModal } from "./modal";
 
+type FileHostInitData = {
+	email: string;
+	name: string;
+	password: string;
+};
+
 export default function CreateFileHostModal(prop: { modalId: string }) {
 	const { MEGA } = gFileHosts;
+	const DEFAULT_FILE_HOST_INIT_DATA: FileHostInitData = {
+		email: "",
+		name: "",
+		password: "",
+	};
 
 	const [selectedFileHost, setSelectedFileHost] =
 		createSignal<gFileHosts | null>(null);
+	const [fileHostInitData, setFileHostInitData] = createStore<FileHostInitData>(
+		DEFAULT_FILE_HOST_INIT_DATA,
+	);
 
 	let createFileHostForm!: HTMLFormElement;
 
@@ -59,22 +74,36 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 										class="input input-primary"
 										placeholder={fileHost()}
 										required
+										onInput={({ currentTarget: { value } }) =>
+											setFileHostInitData(
+												produce((state) => {
+													state.name = value;
+												}),
+											)
+										}
 									/>
 								</div>
 
 								<Switch>
 									<Match when={fileHost() === MEGA}>
-										{/* Username or email */}
+										{/* Email */}
 										<div>
 											<label class="label" for="fileHostUsername">
-												Username or Email
+												Email
 											</label>
 											<input
 												name="fileHostUsername"
-												type="text"
+												type="email"
 												class="input input-primary"
 												placeholder="foo-bar@baz.com"
 												required
+												onInput={({ currentTarget: { value } }) =>
+													setFileHostInitData(
+														produce((state) => {
+															state.email = value;
+														}),
+													)
+												}
 											/>
 										</div>
 
@@ -88,6 +117,13 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 												type="password"
 												class="input input-primary"
 												required
+												onInput={({ currentTarget: { value } }) =>
+													setFileHostInitData(
+														produce((state) => {
+															state.password = value;
+														}),
+													)
+												}
 											/>
 										</div>
 									</Match>
@@ -96,8 +132,31 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 								<button
 									type="button"
 									class="btn btn-primary btn-soft mt-4 col-span-2"
-									onClick={(_) => {
+									onClick={async (_) => {
 										if (createFileHostForm.reportValidity()) {
+											switch (fileHost()) {
+												case gFileHosts.MEGA: {
+													const { MegaSyncFileHost } = await import(
+														"./../../classes/mega-sync"
+													);
+													const { email, name, password } = fileHostInitData;
+													await MegaSyncFileHost.init({
+														email,
+														name,
+														password,
+														restore: false,
+													});
+													break;
+												}
+											}
+
+											createFileHostForm.reset();
+											setFileHostInitData(DEFAULT_FILE_HOST_INIT_DATA);
+											(
+												document.getElementById(
+													prop.modalId,
+												) as HTMLDialogElement
+											).close();
 										}
 									}}
 								>
