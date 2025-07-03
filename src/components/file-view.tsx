@@ -12,6 +12,7 @@ import { gFileHostIcons } from "~/declarations/icons";
 import {
 	gFilePathTracker,
 	gSetFilePathTracker,
+	ROOT_PATH,
 } from "~/declarations/variables";
 
 export default function FileView() {
@@ -63,7 +64,7 @@ export default function FileView() {
 											produce((state) => {
 												if (val instanceof FileHost) {
 													state.fileHost = val;
-													state.path = "/";
+													state.path = ROOT_PATH;
 												} else {
 													state.path +=
 														val.type === "dir"

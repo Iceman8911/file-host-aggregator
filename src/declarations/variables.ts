@@ -9,5 +9,8 @@ type FilePathTracker = {
 	path: FilePath;
 };
 
+export const ROOT_PATH: FilePath = "/";
+
 export const [gFilePathTracker, gSetFilePathTracker] =
-	createStore<FilePathTracker>({ fileHost: null, path: "/" });
+	createStore<FilePathTracker>({ fileHost: null, path: ROOT_PATH });
+
