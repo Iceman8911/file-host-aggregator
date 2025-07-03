@@ -39,13 +39,13 @@ export default function FileView() {
 						return (
 							<button
 								type="button"
-								class="flex flex-col justify-center items-center size-fit"
+								class="flex flex-col justify-center items-center size-fit btn btn-primary btn-soft"
 							>
 								<div class="relative size-fit">
 									<HardDriveIcon class="size-16" />
 									<Dynamic
 										component={gFileHostIcons[type]}
-										class="absolute right-0 bottom-0 size-6"
+										class="absolute right-0 bottom-0 size-6 opacity-75"
 									/>
 								</div>
 
