@@ -1,4 +1,5 @@
 import { hfs } from "@humanfs/web";
+import { ReactiveMap } from "@solid-primitives/map";
 import { parse, stringifyAsync } from "@worker-tools/structured-json";
 import { signalify } from "classy-solid";
 import { gFileHosts } from "~/declarations/enums";
@@ -30,7 +31,7 @@ export abstract class FileHost {
 	abstract readonly type: gFileHosts;
 
 	/** In memory collection of all created file hosts */
-	static collection = new Map<FileHostID, FileHostImplementations>();
+	static collection = new ReactiveMap<FileHostID, FileHostImplementations>();
 
 	constructor(public name: string) {
 		FileHost.collection.set(this.id, this);
@@ -150,7 +151,6 @@ export async function initFileHosts(): Promise<
 	// Load all file hosts from the disk
 	for await (const entry of hfs.list(fileHostRoot())) {
 		const { isFile, name } = entry;
-		console.log(entry);
 
 		if (isFile) {
 			const fileHostId = name as FileHostID;
@@ -167,7 +167,6 @@ export async function initFileHosts(): Promise<
 						...props,
 						restore: true,
 					});
-					console.log("Instance is:", instance);
 					if (instance) fileHosts.push(instance);
 					break;
 				}

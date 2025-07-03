@@ -48,12 +48,6 @@ export class MegaSyncFileHost extends FileHost {
 			// Loop through and restore the props
 			if (arg.restore) {
 				for (const key in arg) {
-					console.log(
-						"Arg is",
-						JSON.stringify(arg),
-						"while instance is",
-						JSON.stringify({ ...MegaSyncFileHost }),
-					);
 					//@ts-expect-error
 					instance[key] = arg[key];
 				}

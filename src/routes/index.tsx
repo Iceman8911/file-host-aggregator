@@ -7,7 +7,7 @@ import { generateUUID } from "~/declarations/functions";
 
 export default function Home() {
 	const fileHostMap = FileHost.collection;
-	const fileHostMapSize = fileHostMap.size;
+	const fileHostMapSize = () => fileHostMap.size;
 
 	return (
 		<main class="text-center mx-auto p-4 flex">
