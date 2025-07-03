@@ -6,11 +6,15 @@ import type { FilePath } from "./types";
 type FilePathTracker = {
 	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
 	fileHost: FileHostImplementations | null;
-	path: FilePath;
+
+	/** Path relative to the `root` of the fileHost.
+	 *
+	 * **Don't forget to combine both values, when using the path**
+	 */
+	relativePath: FilePath;
 };
 
 export const ROOT_PATH: FilePath = "/";
 
 export const [gFilePathTracker, gSetFilePathTracker] =
-	createStore<FilePathTracker>({ fileHost: null, path: ROOT_PATH });
-
+	createStore<FilePathTracker>({ fileHost: null, relativePath: ROOT_PATH });

@@ -23,7 +23,7 @@ export default function FileView() {
 	>(() => {
 		if (gFilePathTracker.fileHost)
 			return gFilePathTracker.fileHost.getDirContents(
-				`${gFilePathTracker.fileHost.root()}${gFilePathTracker.path}`,
+				`${gFilePathTracker.fileHost.root()}${gFilePathTracker.relativePath}`,
 			);
 
 		return Promise.resolve(Array.from(FileHost.collection.values()));
@@ -66,11 +66,11 @@ export default function FileView() {
 											produce((state) => {
 												if (val instanceof FileHost) {
 													state.fileHost = val;
-													state.path = ROOT_PATH;
+													state.relativePath = ROOT_PATH;
 												} else {
-													state.path +=
+													state.relativePath +=
 														val.type === "dir"
-															? `${state.path}/${val.name}`
+															? `${state.relativePath}/${val.name}`
 															: val.file.path;
 												}
 											}),
