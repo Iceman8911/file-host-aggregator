@@ -20,13 +20,13 @@ export default function Nav() {
 	}>;
 
 	return (
-		<nav class={`drawer sm:drawer-open absolute sm:relative ${DRAWER_WIDTH}`}>
+		<nav class={`drawer md:drawer-open absolute md:relative ${DRAWER_WIDTH}`}>
 			<input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
 			<div class="drawer-content flex flex-col items-center justify-center absolute">
 				{/* <!-- Page content here --> */}
 				<label
 					for="my-drawer-2"
-					class="btn btn-primary btn-soft btn-sm drawer-button rounded-l-none px-1 sm:hidden"
+					class="btn btn-primary btn-soft btn-sm drawer-button rounded-l-none px-1 md:hidden"
 				>
 					<MenuIcon aria-label="drawer icon" />
 				</label>
