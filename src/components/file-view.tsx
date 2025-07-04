@@ -1,4 +1,5 @@
 import { createAsync } from "@solidjs/router";
+import CloudIcon from "lucide-solid/icons/cloud";
 import DefaultFileIcon from "lucide-solid/icons/file";
 import ArchiveFileIcon from "lucide-solid/icons/file-archive";
 import AudioFileIcon from "lucide-solid/icons/file-audio";
@@ -82,15 +83,23 @@ export default function FileView() {
 			{/* Breadcrumbs bar */}
 			<div class="breadcrumbs text-sm h-10 px-4 text-primary">
 				<ul class="text-[1.025rem] *:last:font-bold">
-					<Show
-						when={fileViewSettings.pathData.fileHost}
-						fallback={
-							<div class="flex place-items-center gap-2">
-								<HardDriveIcon />
-								File Hosts
-							</div>
-						}
-					>
+					<li>
+						<button
+							type="button"
+							onClick={(_) =>
+								setFileViewSettings(
+									produce((state) => {
+										state.pathData.fileHost = null;
+									}),
+								)
+							}
+						>
+							<CloudIcon />
+							File Hosts
+						</button>
+					</li>
+
+					<Show when={fileViewSettings.pathData.fileHost}>
 						{(fileHost) => {
 							const relativePath = () => fileViewSettings.pathData.relativePath;
 
@@ -116,6 +125,7 @@ export default function FileView() {
 										{(pathFragment, index) => (
 											<li>
 												<Show
+													// Don't apply to the last list item
 													when={relativePath().length - 1 !== index()}
 													fallback={
 														<div class="flex gap-2 place-items-center">
@@ -127,6 +137,7 @@ export default function FileView() {
 													<button
 														type="button"
 														onClick={(_) => {
+															// Move back to the folder the button represents
 															setFileViewSettings(
 																produce((state) => {
 																	state.pathData.relativePath =
