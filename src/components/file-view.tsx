@@ -144,7 +144,7 @@ export default function FileView() {
 							return (
 								<button
 									type="button"
-									class="relative flex flex-col justify-center items-center w-1/6 min-w-20 h-fit aspect-square btn btn-primary btn-soft "
+									class="relative flex flex-col justify-center items-center w-1/6 min-w-20 max-w-25 h-fit aspect-square btn btn-primary btn-soft "
 									title={name}
 									onClick={(_) => {
 										setFileViewSettings(
