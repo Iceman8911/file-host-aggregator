@@ -6,6 +6,7 @@ import {
 	stringifyAsync,
 } from "@worker-tools/structured-json";
 import { signalify } from "classy-solid";
+import QuickLRU from "quick-lru";
 import { gFileHosts } from "~/declarations/enums";
 import { convertPathToString, generateUUID } from "~/declarations/functions";
 import type {
@@ -94,7 +95,15 @@ export abstract class FileHost {
 		);
 	}
 
-	/** @returns `null` if the directory doesn't exist */
+	/** Caches the results of `.getDirContents()` */
+	private static _dirContentCache = new QuickLRU<string, FileOrFolderRes[]>({
+		maxSize: 20,
+		maxAge: 30000,
+	});
+
+	/** Ensure that the path given to it is realteive to the OPFS root
+	 *
+	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(path: FilePath): Promise<[FileRes] | null>;
 	async getDirContents(path: DirectoryPath): Promise<FileOrFolderRes[] | null>;
 	async getDirContents(
@@ -102,6 +111,9 @@ export abstract class FileHost {
 	): Promise<FileOrFolderRes[] | null> {
 		const res: FileOrFolderRes[] = [];
 		const parsedPath = convertPathToString(path);
+		const cachedResult = FileHost._dirContentCache.get(parsedPath);
+
+		if (cachedResult) return cachedResult;
 
 		if (await hfs.isFile(parsedPath)) {
 			const filePath = path as FilePath;
@@ -126,7 +138,12 @@ export abstract class FileHost {
 			}
 		}
 
-		return res.length ? res : null;
+		if (res.length) {
+			FileHost._dirContentCache.set(parsedPath, res);
+			return res;
+		}
+
+		return null;
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
