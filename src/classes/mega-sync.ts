@@ -6,6 +6,8 @@ import {
 } from "~/declarations/functions";
 import type {
 	ClassPropsOnly,
+	DirectoryPath,
+	FileName,
 	FilePath,
 	ResultType,
 } from "~/declarations/types";
@@ -75,18 +77,34 @@ export class MegaSyncFileHost extends FileHost {
 		return instance;
 	}
 
+	/** Returns the folder at the specified path on the **server** while auto-creating missing folders if needed */
+	private async _getFolder(
+		path: DirectoryPath,
+		folderToStartFrom = this._storage?.root,
+	): Promise<MutableFile> {
+		if (!folderToStartFrom) throw Error("MEGA storage not initialized");
+		if (!path.length) return folderToStartFrom;
+
+		const directoryToFindOrCreate = path[0];
+		const restOfDirectoryPath: DirectoryPath = path.slice(1);
+
+		const createdOrFoundDirectory =
+			folderToStartFrom.find(directoryToFindOrCreate) ??
+			(await folderToStartFrom.mkdir(directoryToFindOrCreate));
+
+		return this._getFolder(restOfDirectoryPath, createdOrFoundDirectory);
+	}
+
 	async uploadFile(
 		file: Blob,
-		path: FilePath,
-		name: string,
+		path: DirectoryPath,
+		name: FileName,
 	): Promise<ResultType<URL>> {
 		try {
 			const { _storage } = this;
-			if (!_storage) throw Error("Mega storage not initialized");
+			if (!_storage) throw Error("MEGA storage not initialized");
 
-			const folder =
-				_storage.find((file) => file.name === path) ??
-				(await _storage.mkdir(path));
+			const folder = await this._getFolder(path);
 			const uploadedFile = (await folder.upload(
 				{ name: name, size: file.size },
 				await file.text(),
@@ -130,12 +148,12 @@ export class MegaSyncFileHost extends FileHost {
 					relativePath: ROOT_PATH,
 				});
 			} else {
-				type FileAndPath = { file: MutableFile; relativePath: FilePath };
+				type FileAndPath = { file: MutableFile; relativePath: DirectoryPath };
 
 				// Recursively loop through it's children until we find the files.
 				const searchForNestedFiles = (
 					possibleDirectory: MutableFile,
-					pathAccumulator: FilePath,
+					pathAccumulator: DirectoryPath,
 					foundFiles: Array<FileAndPath> = [],
 				): ReadonlyArray<FileAndPath> => {
 					if (!possibleDirectory.directory) {
@@ -151,23 +169,29 @@ export class MegaSyncFileHost extends FileHost {
 					return possibleDirectory.children.flatMap((nestedFileOrDirectory) => {
 						return searchForNestedFiles(
 							nestedFileOrDirectory,
-							`${pathAccumulator}/${nestedFileOrDirectory.name}`,
+							nestedFileOrDirectory.directory
+								? [
+										...pathAccumulator,
+										nestedFileOrDirectory.name ?? DEFAULT_FILE_NAME,
+									]
+								: [...pathAccumulator],
 							foundFiles,
 						);
 					});
 				};
 
-				searchForNestedFiles(ref, `${ROOT_PATH}${ref.name}`).forEach(
-					async ({ file, relativePath }) => {
-						await FileHostFile.init({
-							fileData: await downloadFileContent(file, getMetadataOnly),
-							fileHostId: this.id,
-							fileUrl: await file.link({ noKey: true }),
-							name: file.name ?? DEFAULT_FILE_NAME,
-							relativePath,
-						});
-					},
-				);
+				searchForNestedFiles(ref, [
+					...ROOT_PATH,
+					ref.name ?? DEFAULT_FILE_NAME,
+				]).forEach(async ({ file, relativePath }) => {
+					await FileHostFile.init({
+						fileData: await downloadFileContent(file, getMetadataOnly),
+						fileHostId: this.id,
+						fileUrl: await file.link({ noKey: true }),
+						name: file.name ?? DEFAULT_FILE_NAME,
+						relativePath,
+					});
+				});
 			}
 		}
 	}
