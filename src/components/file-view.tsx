@@ -62,10 +62,13 @@ export default function FileView() {
 				<Suspense>
 					<For each={filesOrFileHosts()}>
 						{(val) => {
+							const name = val.type === "file" ? val.file.name(true) : val.name;
+
 							return (
 								<button
 									type="button"
-									class="flex flex-col justify-center items-center size-fit btn btn-primary btn-soft"
+									class="relative flex flex-col justify-center items-center w-1/6 min-w-20 h-fit aspect-square btn btn-primary btn-soft "
+									title={name}
 									onClick={(_) => {
 										gSetFilePathTracker(
 											produce((state) => {
@@ -82,6 +85,10 @@ export default function FileView() {
 										);
 									}}
 								>
+									{/* <div
+										class="tooltip tooltip-bottom absolute size-full"
+										data-tip={name}
+									> */}
 									<div class="relative size-fit">
 										<HardDriveIcon class="size-16" />
 										<Show when={val instanceof FileHost}>
@@ -92,9 +99,10 @@ export default function FileView() {
 										</Show>
 									</div>
 
-									<p class="font-bold">
-										{val.type === "file" ? val.file.name() : val.name}
+									<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+										{name}
 									</p>
+									{/* </div> */}
 								</button>
 							);
 						}}
