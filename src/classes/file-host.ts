@@ -333,9 +333,9 @@ export class FileHostFile {
 	get type(): FileType {
 		const { _mimeType } = this;
 
-		if (!_mimeType) return FileType.OTHER
+		if (!_mimeType) return FileType.OTHER;
 
-		const includes = (arg: string) =>_mimeType.includes(arg);
+		const includes = (arg: string) => _mimeType.includes(arg);
 
 		return includes("text")
 			? FileType.TEXT
@@ -359,12 +359,12 @@ export class FileHostFile {
 	/** Caches the mime type (since `lookup()` is a server function) */
 	private async _cacheMimeType() {
 		const { _file, _ext } = this;
-		const {mime} =  (await import("./mime"))
+		const { mime } = await import("./mime");
 		const mimeType =
 			_file?.type ?? mime.getType(_ext) ?? "application/octet-stream";
 
 		this._mimeType = mimeType;
-		console.log(mimeType)
+		// console.log(mimeType)
 
 		return mimeType;
 	}
@@ -420,7 +420,7 @@ export class FileHostFile {
 		const newClass = new FileHostFile(...args);
 		const parentFileHost = newClass.fileHost;
 
-		await newClass._cacheMimeType()
+		await newClass._cacheMimeType();
 
 		if (parentFileHost) {
 			// Store the file in the filesystem.
