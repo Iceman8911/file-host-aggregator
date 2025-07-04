@@ -9,7 +9,8 @@ import type {
 	FilePath,
 	ResultType,
 } from "~/declarations/types";
-import { FileHost } from "./file-host";
+import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
+import { FileHost, FileHostFile } from "./file-host";
 
 const { Storage: MegaSyncStorage } = await import("megajs");
 
@@ -66,9 +67,11 @@ export class MegaSyncFileHost extends FileHost {
 				instance[key] = arg[key];
 			}
 		}
-
 		// Save after successful initialization
-		instance.save();
+		await instance.save();
+
+		await instance.downloadFiles(true);
+
 		return instance;
 	}
 
@@ -97,7 +100,75 @@ export class MegaSyncFileHost extends FileHost {
 		}
 	}
 
-	// getFiles() {
-	// 	return {};
-	// }
+	async downloadFiles(getMetadataOnly = false): Promise<void> {
+		const { _storage } = this;
+		if (!_storage) return;
+
+		// Get references to all the files
+		const fileRefs = _storage.filter((_) => true);
+
+		// TODO: Depending on the file size, use a stream
+		const downloadFileContent = async (
+			file: MutableFile,
+			onlyMetaData = true,
+		) => {
+			if (onlyMetaData) return undefined;
+
+			return new Blob([await file.downloadBuffer({})]);
+		};
+
+		for (const ref of fileRefs) {
+			console.log(ref);
+
+			// It's a file at the root level
+			if (!ref.directory) {
+				await FileHostFile.init({
+					fileData: await downloadFileContent(ref, getMetadataOnly),
+					fileHostId: this.id,
+					fileUrl: await ref.link({ noKey: true }),
+					name: ref.name ?? DEFAULT_FILE_NAME,
+					relativePath: ROOT_PATH,
+				});
+			} else {
+				type FileAndPath = { file: MutableFile; relativePath: FilePath };
+
+				// Recursively loop through it's children until we find the files.
+				const searchForNestedFiles = (
+					possibleDirectory: MutableFile,
+					pathAccumulator: FilePath,
+					foundFiles: Array<FileAndPath> = [],
+				): ReadonlyArray<FileAndPath> => {
+					if (!possibleDirectory.directory) {
+						foundFiles.push({
+							file: possibleDirectory,
+							relativePath: pathAccumulator,
+						});
+						return foundFiles;
+					}
+
+					if (!possibleDirectory.children) return foundFiles;
+
+					return possibleDirectory.children.flatMap((nestedFileOrDirectory) => {
+						return searchForNestedFiles(
+							nestedFileOrDirectory,
+							`${pathAccumulator}/${nestedFileOrDirectory.name}`,
+							foundFiles,
+						);
+					});
+				};
+
+				searchForNestedFiles(ref, `${ROOT_PATH}${ref.name}`).forEach(
+					async ({ file, relativePath }) => {
+						await FileHostFile.init({
+							fileData: await downloadFileContent(file, getMetadataOnly),
+							fileHostId: this.id,
+							fileUrl: await file.link({ noKey: true }),
+							name: file.name ?? DEFAULT_FILE_NAME,
+							relativePath,
+						});
+					},
+				);
+			}
+		}
+	}
 }

@@ -15,6 +15,7 @@ type FilePathTracker = {
 };
 
 export const ROOT_PATH: FilePath = "/";
+export const DEFAULT_FILE_NAME = "???.bin";
 
 export const [gFilePathTracker, gSetFilePathTracker] =
 	createStore<FilePathTracker>({ fileHost: null, relativePath: ROOT_PATH });

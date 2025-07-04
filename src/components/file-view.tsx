@@ -1,6 +1,6 @@
 import { createAsync } from "@solidjs/router";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
-import { createSignal, For, Show, Suspense } from "solid-js";
+import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 import { produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
@@ -28,6 +28,8 @@ export default function FileView() {
 
 		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});
+
+	// createEffect((_) => console.log("File tracker is:", gFilePathTracker));
 
 	const [iconSize, setIconSize] = createSignal<"XS" | "S" | "M" | "L" | "XL">(
 		"M",
@@ -71,7 +73,7 @@ export default function FileView() {
 													state.relativePath +=
 														val.type === "dir"
 															? `${state.relativePath}/${val.name}`
-															: val.file.path;
+															: val.file.relativePath;
 												}
 											}),
 										);

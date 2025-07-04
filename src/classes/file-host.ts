@@ -1,6 +1,10 @@
 import { hfs } from "@humanfs/web";
 import { ReactiveMap } from "@solid-primitives/map";
-import { parse, stringifyAsync } from "@worker-tools/structured-json";
+import {
+	parse,
+	stringify,
+	stringifyAsync,
+} from "@worker-tools/structured-json";
 import { signalify } from "classy-solid";
 import { gFileHosts } from "~/declarations/enums";
 import { Directory } from "~/declarations/file-system";
@@ -13,7 +17,7 @@ import type {
 	ResultType,
 	UUID,
 } from "~/declarations/types";
-import { ROOT_PATH } from "~/declarations/variables";
+import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import gMimeTypeClientFunctions from "~/server/mime-types/mime-types-client";
 import type { MegaSyncFileHost } from "./mega-sync";
 
@@ -47,7 +51,7 @@ export abstract class FileHost {
 	/**Caches all files from the file host in the file system */
 	abstract downloadFiles(
 		/** If `true`, only the bare metadata (like path data, names, sizes) are retrieved, but the file's actual content is not */
-		getMetadata?: boolean,
+		getMetadataOnly?: boolean,
 	): Promise<void>;
 
 	/** Takes a regular file and the path to upload it to.
@@ -244,7 +248,7 @@ export class FileHostFile<
 	private _name: string;
 	/** The extension of the file, e.g `webp`, `7z`, etc */
 	private _ext: string;
-	readonly path: FilePath;
+	readonly relativePath: FilePath;
 	readonly dateCreated = new Date();
 	dateEdited = new Date();
 	private readonly _url: URL;
@@ -257,29 +261,30 @@ export class FileHostFile<
 
 	constructor(args: {
 		name: string;
-		path: FilePath;
+		relativePath: FilePath;
 		fileUrl: URL | string;
 		fileHostId: FileHostID;
+		/** In cases where it's convenient enough to get the file data */
+		fileData?: Blob;
 	}) {
-		const { fileHostId, fileUrl, name: argName, path } = args;
+		const {
+			fileData,
+			fileHostId,
+			fileUrl,
+			name: argName,
+			relativePath: path,
+		} = args;
 
 		const [name, ext] = argName.split(/\.(?!.*\.)/);
 		this._name = name;
 		this._ext = ext;
-		this.path = path;
+		this.relativePath = path;
 		this._url = new URL(fileUrl);
 		this._fileHostId = fileHostId;
+		this._file = fileData ?? null;
 
 		// TODO - Determine file type without necessarily downloading the entire file
-
-		const parentFileHost = FileHost.collection.get(fileHostId);
-		const { _file } = this;
-		if (parentFileHost && _file) {
-			// Store the file in the filesystem.
-			_file.arrayBuffer().then((buffer) => {
-				hfs.write(parentFileHost.root(), buffer);
-			});
-		}
+		// const { _file } = this;
 	}
 
 	name(includeExtension = false): string {
@@ -362,14 +367,33 @@ export class FileHostFile<
 		return mimeType;
 	}
 
-	get fileHost(): TFileHostParent {
-		// TODO: Logic to get the file host from an in memory map
+	get fileHost(): FileHostImplementations | null {
+		return FileHost.collection.get(this._fileHostId) ?? null;
+	}
 
-		return {} as unknown as TFileHostParent;
+	/** The full path of the file from the OPRS root, e.g `/file_host/<file_host_id>/folder/file.bin` */
+	get path() {
+		const parentFileHost = this.fileHost;
+
+		return parentFileHost
+			? `${parentFileHost.root()}${this.relativePath}${this.name(true)}`
+			: `${this.relativePath}${this.name(true)}`;
 	}
 
 	static async serialize(instance: FileHostFile) {
-		return stringifyAsync(instance);
+		return stringify(instance);
+	}
+
+	async saveToDisk() {
+		// console.log(
+		// 	"The Path of ",
+		// 	this.name(true),
+		// 	"is:",
+		// 	this.path,
+		// 	"\n As for if it has a parent, you can find it in:",
+		// 	{ ...this.fileHost },
+		// );
+		return hfs.write(this.path, await FileHostFile.serialize(this));
 	}
 
 	static async deserialize<TFileHost extends FileHostImplementations>(
@@ -381,13 +405,31 @@ export class FileHostFile<
 		const newClass = new FileHostFile<TFileHost>({
 			fileHostId: fileHostParent.id,
 			fileUrl: window.location.href,
-			name: "",
-			path: ROOT_PATH,
+			name: DEFAULT_FILE_NAME,
+			relativePath: ROOT_PATH,
 		});
 
 		for (const key in deserializedData) {
 			//@ts-expect-error
 			newClass[key] = data[key];
+		}
+
+		// Save the changes we made
+		await newClass.saveToDisk();
+
+		return newClass;
+	}
+
+	/** ALWAYS USE THIS TO GET THE CLASS */
+	static async init<TFileHost extends FileHostImplementations>(
+		...args: ConstructorParameters<typeof FileHostFile>
+	) {
+		const newClass = new FileHostFile<TFileHost>(...args);
+		const parentFileHost = newClass.fileHost;
+
+		if (parentFileHost) {
+			// Store the file in the filesystem.
+			await newClass.saveToDisk();
 		}
 
 		return newClass;
