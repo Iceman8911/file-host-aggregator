@@ -1,4 +1,6 @@
 import { createAsync } from "@solidjs/router";
+import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
+import OpenedFolderIcon from "lucide-solid/icons/folder-open";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 import { createStore, produce } from "solid-js/store";
@@ -9,45 +11,128 @@ import {
 	type FileHostImplementations,
 } from "~/classes/file-host";
 import { gFileHostIcons } from "~/declarations/icons";
-import {
-	gFilePathTracker,
-	gSetFilePathTracker,
-	ROOT_PATH,
-} from "~/declarations/variables";
+import type { DirectoryPath } from "~/declarations/types";
+import { ROOT_PATH } from "~/declarations/variables";
+
+type FilePathTracker = {
+	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
+	fileHost: FileHostImplementations | null;
+
+	/** Path relative to the `root` of the fileHost.
+	 *
+	 * **Don't forget to combine both values, when using the path**
+	 */
+	relativePath: DirectoryPath;
+};
+
+type FileViewSettings = {
+	iconSize: "XS" | "S" | "M" | "L" | "XL";
+	/** How the icons / file buttons will be displayed */
+	mode: "grid" | "list" | "wrapped" | "minimal";
+	/** This is used to determine what files / filehosts should be shown */
+	pathData: FilePathTracker;
+};
 
 export default function FileView() {
+	const defaultFileViewSettings: Readonly<FileViewSettings> = {
+		iconSize: "M",
+		mode: "grid",
+		pathData: { fileHost: null, relativePath: ROOT_PATH },
+	};
+	const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
+		defaultFileViewSettings,
+	);
+
 	const filesOrFileHosts = createAsync<
 		| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
 		| FileHostImplementations[]
 		| null
 	>(() => {
-		if (gFilePathTracker.fileHost)
-			return gFilePathTracker.fileHost.getDirContents(
+		if (fileViewSettings.pathData.fileHost)
+			return fileViewSettings.pathData.fileHost.getDirContents(
 				[
-					gFilePathTracker.fileHost.root(),
-					gFilePathTracker.relativePath,
+					fileViewSettings.pathData.fileHost.root(),
+					fileViewSettings.pathData.relativePath,
 				].flat(),
 			);
 
 		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});
 
-	type FileViewSettings = {
-		iconSize: "XS" | "S" | "M" | "L" | "XL";
-		mode: "grid" | "list" | "wrapped" | "minimal";
-	};
-	const defaultFileViewSettings: Readonly<FileViewSettings> = {
-		iconSize: "M",
-		mode: "grid",
-	};
-	const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
-		defaultFileViewSettings,
-	);
-
 	return (
 		<div class="flex flex-col gap-8 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
 			{/* Breadcrumbs bar */}
-			<div class="h-10"></div>
+			<div class="breadcrumbs text-sm h-10 px-4 text-primary">
+				<ul class="text-[1.025rem] *:last:font-bold">
+					<Show
+						when={fileViewSettings.pathData.fileHost}
+						fallback={
+							<div class="flex place-items-center gap-2">
+								<HardDriveIcon />
+								File Hosts
+							</div>
+						}
+					>
+						{(fileHost) => {
+							const relativePath = () => fileViewSettings.pathData.relativePath;
+
+							return (
+								<>
+									<li>
+										<button
+											type="button"
+											onClick={(_) => {
+												setFileViewSettings(
+													produce((state) => {
+														state.pathData.relativePath = ROOT_PATH;
+													}),
+												);
+											}}
+										>
+											<HardDriveIcon />
+											{fileHost().name}
+										</button>
+									</li>
+
+									<For each={relativePath()}>
+										{(pathFragment, index) => (
+											<li>
+												<Show
+													when={relativePath().length - 1 !== index()}
+													fallback={
+														<div class="flex gap-2 place-items-center">
+															<ClosedFolderIcon />
+															{pathFragment}
+														</div>
+													}
+												>
+													<button
+														type="button"
+														onClick={(_) => {
+															setFileViewSettings(
+																produce((state) => {
+																	state.pathData.relativePath =
+																		state.pathData.relativePath.slice(
+																			0,
+																			index() + 1,
+																		);
+																}),
+															);
+														}}
+													>
+														<OpenedFolderIcon />
+														{pathFragment}
+													</button>
+												</Show>
+											</li>
+										)}
+									</For>
+								</>
+							);
+						}}
+					</Show>
+				</ul>
+			</div>
 
 			{/* Folder/File view */}
 			<div class="grow flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
@@ -62,14 +147,14 @@ export default function FileView() {
 									class="relative flex flex-col justify-center items-center w-1/6 min-w-20 h-fit aspect-square btn btn-primary btn-soft "
 									title={name}
 									onClick={(_) => {
-										gSetFilePathTracker(
+										setFileViewSettings(
 											produce((state) => {
 												if (val instanceof FileHost) {
-													state.fileHost = val;
-													state.relativePath = ROOT_PATH;
+													state.pathData.fileHost = val;
+													state.pathData.relativePath = ROOT_PATH;
 												} else if (val.type === "dir") {
-													state.relativePath = [
-														state.relativePath,
+													state.pathData.relativePath = [
+														state.pathData.relativePath,
 														val.name,
 													].flat();
 												}
