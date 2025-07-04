@@ -1,7 +1,7 @@
 import { createAsync } from "@solidjs/router";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
-import { produce } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
 	FileHost,
@@ -32,25 +32,17 @@ export default function FileView() {
 		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});
 
-	// createEffect((_) => console.log("File tracker is:", gFilePathTracker));
-
-	const [iconSize, setIconSize] = createSignal<"XS" | "S" | "M" | "L" | "XL">(
-		"M",
-	);
-	const iconSizeVal = () => {
-		switch (iconSize()) {
-			case "XS":
-				return 7;
-			case "S":
-				return 6;
-			case "M":
-				return 5;
-			case "L":
-				return 4;
-			case "XL":
-				return 3;
-		}
+	type FileViewSettings = {
+		iconSize: "XS" | "S" | "M" | "L" | "XL";
+		mode: "grid" | "list" | "wrapped" | "minimal";
 	};
+	const defaultFileViewSettings: Readonly<FileViewSettings> = {
+		iconSize: "M",
+		mode: "grid",
+	};
+	const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
+		defaultFileViewSettings,
+	);
 
 	return (
 		<div class="flex flex-col gap-8 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
