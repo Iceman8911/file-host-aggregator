@@ -1,14 +1,32 @@
 import { createAsync } from "@solidjs/router";
+import DefaultFileIcon from "lucide-solid/icons/file";
+import ArchiveFileIcon from "lucide-solid/icons/file-archive";
+import AudioFileIcon from "lucide-solid/icons/file-audio";
+import ImageFileIcon from "lucide-solid/icons/file-image";
+import UnknownFileIcon from "lucide-solid/icons/file-question-mark";
+import TextFileIcon from "lucide-solid/icons/file-text";
+import DocumentFileIcon from "lucide-solid/icons/file-type";
+import VideoFileIcon from "lucide-solid/icons/file-video";
+import DefaultFolderIcon from "lucide-solid/icons/folder";
 import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
-import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
+import {
+	createEffect,
+	createSignal,
+	For,
+	Match,
+	Show,
+	Suspense,
+	Switch,
+} from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
 	FileHost,
 	type FileHostFile,
 	type FileHostImplementations,
+	FileType,
 } from "~/classes/file-host";
 import { gFileHostIcons } from "~/declarations/icons";
 import type { DirectoryPath } from "~/declarations/types";
@@ -166,14 +184,50 @@ export default function FileView() {
 										class="tooltip tooltip-bottom absolute size-full"
 										data-tip={name}
 									> */}
-									<div class="relative size-fit">
-										<HardDriveIcon class="size-16" />
-										<Show when={val instanceof FileHost}>
-											<Dynamic
-												component={gFileHostIcons[(val as FileHost).type]}
-												class="absolute right-0 bottom-0 size-6 opacity-75"
-											/>
-										</Show>
+									<div class="relative size-fit *:first:size-16">
+										<Switch>
+											<Match when={val instanceof FileHost}>
+												<HardDriveIcon />
+												<Dynamic
+													component={gFileHostIcons[(val as FileHost).type]}
+													class="absolute right-0 bottom-0 size-6 opacity-75"
+												/>
+											</Match>
+
+											<Match when={val.type === "dir"}>
+												<DefaultFolderIcon />
+											</Match>
+
+											<Match when={val.type === "file" && val.file}>
+												{(file) => (
+													<Switch fallback={<UnknownFileIcon />}>
+														<Match when={file().type === FileType.ARCHIVE}>
+															<ArchiveFileIcon />
+														</Match>
+
+														<Match when={file().type === FileType.AUDIO}>
+															<AudioFileIcon />
+														</Match>
+
+														<Match when={file().type === FileType.DOCUMENT}>
+															<DocumentFileIcon />
+														</Match>
+
+														<Match when={file().type === FileType.IMAGE}>
+															<ImageFileIcon />
+														</Match>
+
+														<Match when={file().type === FileType.TEXT}>
+															<TextFileIcon />
+														</Match>
+
+														<Match when={file().type === FileType.VIDEO}>
+															<VideoFileIcon />
+														</Match>
+													</Switch>
+												)}
+											</Match>
+										</Switch>
 									</div>
 
 									<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">

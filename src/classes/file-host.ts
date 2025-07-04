@@ -6,6 +6,7 @@ import {
 	stringifyAsync,
 } from "@worker-tools/structured-json";
 import { signalify } from "classy-solid";
+import mime from "mime";
 import { gFileHosts } from "~/declarations/enums";
 import { convertPathToString, generateUUID } from "~/declarations/functions";
 import type {
@@ -19,7 +20,6 @@ import type {
 	UUID,
 } from "~/declarations/types";
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
-import gMimeTypeClientFunctions from "~/server/mime-types/mime-types-client";
 import type { MegaSyncFileHost } from "./mega-sync";
 
 export type FileHostID = Brand<UUID, "FileHostID">;
@@ -30,8 +30,6 @@ export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 type FileRes = { type: "file"; file: FileHostFile };
 type FolderRes = { type: "dir"; name: string };
 type FileOrFolderRes = FileRes | FolderRes;
-
-const { extension, lookup } = gMimeTypeClientFunctions;
 
 const FILE_HOST = "file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
@@ -224,18 +222,22 @@ export async function initFileHosts(): Promise<
 	return fileHosts;
 }
 
-enum FileType {
-	TEXT,
-	IMAGE,
-	VIDEO,
-	AUDIO,
-	ARCHIVE,
+/** Categories for the type of a file.
+ *
+ * Like all "png", "jpg", "webp", etc files are `FileType.IMAGE`
+ */
+export enum FileType {
+	TEXT = "txt",
+	IMAGE = "img",
+	VIDEO = "vid",
+	AUDIO = "aud",
+	ARCHIVE = "zip",
 
-	PDF,
-	EPUB,
+	PDF = "pdf",
+	EPUB = "epub",
 	/** Generic text document stored in a binary format, e.g `.docx`, `.xlsx`,etc */
-	DOCUMENT,
-	OTHER,
+	DOCUMENT = "doc",
+	OTHER = "bin",
 }
 
 /** A representation of a file fetched from a file-host. At first, it only contains the bare metadata but not the actual file. When interacted with, the actual file will be downloaded */
@@ -294,7 +296,7 @@ export class FileHostFile {
 		if (this._thumbnail) return this._thumbnail;
 
 		// TODO: Use placeholders
-		switch (this._type) {
+		switch (this.type) {
 			case FileType.TEXT:
 				return "";
 			case FileType.IMAGE:
@@ -322,14 +324,14 @@ export class FileHostFile {
 		if (this._file) return this._file;
 		else {
 			const blob = await (await fetch(this._url)).blob();
-			const file = new File([blob], `file.${extension(blob.type) || "bin"}`);
+			const file = new File([blob], this.name(true));
 			this._file = file;
 
 			return file;
 		}
 	}
 
-	private get _type(): FileType {
+	get type(): FileType {
 		const { _mimeType } = this;
 
 		const includes = (arg: string) =>
@@ -355,10 +357,10 @@ export class FileHostFile {
 	}
 
 	/** Caches the mime type (since `lookup()` is a server function) */
-	private _cacheMimeType(): string {
+	private _cacheMimeType() {
 		const { _file, _ext } = this;
 		const mimeType =
-			_file?.type ?? (lookup(_ext) || "application/octet-stream");
+			_file?.type ?? mime.getType(_ext) ?? "application/octet-stream";
 
 		this._mimeType = mimeType;
 
