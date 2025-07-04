@@ -118,7 +118,7 @@ export class MegaSyncFileHost extends FileHost {
 		};
 
 		for (const ref of fileRefs) {
-			console.log(ref);
+			// console.log(ref);
 
 			// It's a file at the root level
 			if (!ref.directory) {

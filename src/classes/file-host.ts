@@ -93,7 +93,7 @@ export abstract class FileHost {
 		| null
 	>;
 	async getDirContents(
-		path: FilePath | FilePathWithExtension,
+		path: FilePath,
 	): Promise<Array<
 		{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
 	> | null>;
@@ -105,6 +105,9 @@ export abstract class FileHost {
 		const res: Array<
 			{ type: "dir"; name: string } | { type: "file"; file: FileHostFile<this> }
 		> = [];
+
+		// Get rid of any back slashes
+		if (path.endsWith("/")) path = path.slice(0, -1) as FilePath;
 
 		if (await hfs.isFile(path)) {
 			const possibleFile = await this.getFile(path as FilePathWithExtension);
