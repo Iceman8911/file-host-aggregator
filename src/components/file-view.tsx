@@ -32,6 +32,7 @@ import {
 	type FileHostImplementations,
 	FileType,
 } from "~/classes/file-host";
+import { quickSort } from "~/declarations/async-quick-sort";
 import { gFileHostIcons } from "~/declarations/icons";
 import type { DirectoryPath } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
@@ -55,7 +56,14 @@ type FileViewSettings = {
 	pathData: FilePathTracker;
 	/** Whether the file host(s) data is currently being refreshed */
 	isRefreshing: boolean;
+	/** How the files and folders should be sorted when displaying them */
+	sorting: { param: "name" | "date" | "size" | "type"; order: "asc" | "desc" };
 };
+
+type FilesOrFileHosts =
+	| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
+	| FileHostImplementations[]
+	| null;
 
 export default function FileView() {
 	const defaultFileViewSettings: Readonly<FileViewSettings> = {
@@ -63,15 +71,12 @@ export default function FileView() {
 		isRefreshing: false,
 		mode: "grid",
 		pathData: { fileHost: null, relativePath: ROOT_PATH },
+		// Sort alpabetically by default
+		sorting: { order: "asc", param: "name" },
 	};
 	const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 		defaultFileViewSettings,
 	);
-
-	type FilesOrFileHosts =
-		| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
-		| FileHostImplementations[]
-		| null;
 
 	const _fetchedFilesOrFileHosts = createMemo<Promise<FilesOrFileHosts>>(
 		async () => {
@@ -97,18 +102,83 @@ export default function FileView() {
 			const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
 			if (!originalFilesOrFileHosts) return [];
 
-			// Sort alpabetically by default
-			const sorted = originalFilesOrFileHosts.sort((a, b) => {
-				const nameOfA =
-					a instanceof FileHost || a.type === "dir"
-						? a.name
-						: a.file.name(true);
-				const nameOfB =
-					b instanceof FileHost || b.type === "dir"
-						? b.name
-						: b.file.name(true);
+			//@ts-expect-error Yeah, I messed up the types, but it works :D
+			const sorted: FilesOrFileHosts = await quickSort<
+				| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })
+				| FileHostImplementations
+			>(originalFilesOrFileHosts, async (a, b) => {
+				const sortingData = fileViewSettings.sorting;
 
-				return nameOfA >= nameOfB ? 1 : -1;
+				switch (sortingData.param) {
+					case "name": {
+						const nameOfA =
+							a instanceof FileHost || a.type === "dir"
+								? a.name
+								: a.file.name(true);
+						const nameOfB =
+							b instanceof FileHost || b.type === "dir"
+								? b.name
+								: b.file.name(true);
+
+						return (
+							sortingData.order === "asc"
+								? nameOfA >= nameOfB
+								: nameOfA <= nameOfB
+						)
+							? 1
+							: -1;
+					}
+					// TODO: Add a way for obtaining folder dates.
+					case "date": {
+						const dateOfA =
+							a instanceof FileHost
+								? a.dateCreated.getTime()
+								: a.type === "file"
+									? a.file.dateCreated.getTime()
+									: Date.now();
+						const dateOfB =
+							b instanceof FileHost
+								? b.dateCreated.getTime()
+								: b.type === "file"
+									? b.file.dateCreated.getTime()
+									: Date.now();
+
+						return (
+							sortingData.order === "asc"
+								? dateOfA >= dateOfB
+								: dateOfA <= dateOfB
+						)
+							? 1
+							: -1;
+					}
+					case "size": {
+						const sizeOfA =
+							a instanceof FileHost
+								? await a.spaceUsed()
+								: a.type === "file"
+									? a.file.dateCreated.getTime()
+									: Date.now();
+						const sizeOfB =
+							b instanceof FileHost
+								? b.dateCreated.getTime()
+								: b.type === "file"
+									? b.file.dateCreated.getTime()
+									: Date.now();
+
+						return (
+							sortingData.order === "asc"
+								? sizeOfA >= sizeOfB
+								: sizeOfA <= sizeOfB
+						)
+							? 1
+							: -1;
+					}
+					// TODO:
+					case "type":
+						return 0;
+					default:
+						return 0;
+				}
 			});
 
 			const result = sorted;

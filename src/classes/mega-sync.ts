@@ -84,7 +84,6 @@ export class MegaSyncFileHost extends FileHost {
 	): Promise<MutableFile> {
 		if (!folderToStartFrom) throw Error("MEGA storage not initialized");
 		if (!path.length) return folderToStartFrom;
-
 		const directoryToFindOrCreate = path[0];
 		const restOfDirectoryPath: DirectoryPath = path.slice(1);
 
