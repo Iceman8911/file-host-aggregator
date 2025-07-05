@@ -203,7 +203,13 @@ export default function FileView() {
 
 			{/* Folder/File view */}
 			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense>
+				<Suspense
+					fallback={
+						<div class="size-full flex items-center justify-center">
+							<span class="loading loading-spinner loading-xl text-primary scale-200"></span>
+						</div>
+					}
+				>
 					<For each={filesOrFileHosts()}>
 						{(val) => {
 							const name = val.type === "file" ? val.file.name(true) : val.name;
