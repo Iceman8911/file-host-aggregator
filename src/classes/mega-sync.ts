@@ -33,6 +33,19 @@ export class MegaSyncFileHost extends FileHost {
 		return { id, dateCreated, name, email, password, type };
 	}
 
+	/** @throws if a stable internet connection cannot be established */
+	private async _initMEGAStorage(
+		...args: ConstructorParameters<typeof MegaSyncStorage>
+	) {
+		gThrowIfNoInternet();
+
+		this._storage = await new MegaSyncStorage(...args).ready;
+
+		await this.downloadFiles();
+
+		return this._storage;
+	}
+
 	/** Use this to initialize the file host. Can also be used to restore serialized data */
 	static override async init(
 		arg:
@@ -43,24 +56,7 @@ export class MegaSyncFileHost extends FileHost {
 			  }),
 	) {
 		const { email, name, password } = arg;
-		let instance: MegaSyncFileHost;
-
-		try {
-			gThrowIfNoInternet();
-
-			const storage = await new MegaSyncStorage({
-				email,
-				password,
-				userAgent: "FileHostAggregator/0.1",
-			}).ready;
-
-			instance = new MegaSyncFileHost(name, email, password, storage);
-		} catch (_) {
-			console.error(
-				"Unable to connect to MEGA Sync. Some features may be unavailable",
-			);
-			instance = new MegaSyncFileHost(name, email, password, null);
-		}
+		const instance = new MegaSyncFileHost(name, email, password, null);
 
 		// Loop through and restore the props
 		if (arg.restore) {
@@ -69,10 +65,22 @@ export class MegaSyncFileHost extends FileHost {
 				instance[key] = arg[key];
 			}
 		}
+
+		try {
+			// Not `await`ed since it may cause a little delay
+			instance._initMEGAStorage({
+				email,
+				password,
+				userAgent: "FileHostAggregator/0.1",
+			});
+		} catch (_) {
+			console.error(
+				"Unable to connect to MEGA Sync. Some features may be unavailable",
+			);
+		}
+
 		// Save after successful initialization
 		await instance.save();
-
-		await instance.downloadFiles();
 
 		return instance;
 	}
