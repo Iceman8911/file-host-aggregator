@@ -53,7 +53,7 @@ export abstract class FileHost {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
-	/**Caches all files from the file host in the file system */
+	/** Downloads and caches all files (or only their metadata) from the file host into the file system */
 	abstract downloadFiles(
 		/** If `true`, only the bare metadata (like path data, names, sizes) are retrieved, but the file's actual content is not */
 		getMetadataOnly?: boolean,

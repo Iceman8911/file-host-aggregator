@@ -52,11 +52,14 @@ type FileViewSettings = {
 	mode: "grid" | "list" | "wrapped" | "minimal";
 	/** This is used to determine what files / filehosts should be shown */
 	pathData: FilePathTracker;
+	/** Whether the file host(s) data is currently being refreshed */
+	isRefreshing: boolean;
 };
 
 export default function FileView() {
 	const defaultFileViewSettings: Readonly<FileViewSettings> = {
 		iconSize: "M",
+		isRefreshing: false,
 		mode: "grid",
 		pathData: { fileHost: null, relativePath: ROOT_PATH },
 	};
@@ -170,12 +173,31 @@ export default function FileView() {
 			</div>
 
 			{/* Utility icons */}
-			<div class="flex gap-2 justify-center items-center text-primary *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:rounded-2xl">
+			<div class="flex gap-2 justify-center items-center *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:rounded-2xl">
 				<button type="button">
 					<SearchIcon />
 				</button>{" "}
-				<button type="button">
-					<RefreshIcon />
+				<button
+					type="button"
+					disabled={!fileViewSettings.pathData.fileHost}
+					onClick={(_) => {
+						if (fileViewSettings.isRefreshing === true) return;
+
+						setFileViewSettings(
+							produce(async (state) => {
+								state.isRefreshing = true;
+
+								// Refetch the data
+								await state.pathData.fileHost?.downloadFiles();
+
+								state.isRefreshing = false;
+							}),
+						);
+					}}
+				>
+					<Show when={fileViewSettings.isRefreshing} fallback={<RefreshIcon />}>
+						<span class="loading loading-spinner"></span>
+					</Show>
 				</button>
 			</div>
 

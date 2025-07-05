@@ -72,7 +72,7 @@ export class MegaSyncFileHost extends FileHost {
 		// Save after successful initialization
 		await instance.save();
 
-		await instance.downloadFiles(true);
+		await instance.downloadFiles();
 
 		return instance;
 	}
@@ -118,7 +118,7 @@ export class MegaSyncFileHost extends FileHost {
 		}
 	}
 
-	async downloadFiles(getMetadataOnly = false): Promise<void> {
+	async downloadFiles(getMetadataOnly = true): Promise<void> {
 		const { _storage } = this;
 		if (!_storage) return;
 
