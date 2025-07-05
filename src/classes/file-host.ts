@@ -97,8 +97,8 @@ export abstract class FileHost {
 
 	/** Caches the results of `.getDirContents()` */
 	private static _dirContentCache = new QuickLRU<string, FileOrFolderRes[]>({
-		maxSize: 20,
-		maxAge: 30000,
+		maxSize: 100,
+		maxAge: 300000,
 	});
 
 	/** Ensure that the path given to it is realteive to the OPFS root
@@ -491,8 +491,6 @@ export class FileHostFile {
 			// Store the file in the filesystem.
 			await newClass.saveToDisk();
 		}
-
-		console.log(newClass);
 
 		return newClass;
 	}
