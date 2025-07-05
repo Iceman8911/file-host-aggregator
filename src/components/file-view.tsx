@@ -69,13 +69,17 @@ export default function FileView() {
 		| FileHostImplementations[]
 		| null
 	>(() => {
-		if (fileViewSettings.pathData.fileHost)
-			return fileViewSettings.pathData.fileHost.getDirContents(
-				[
-					fileViewSettings.pathData.fileHost.root(),
-					fileViewSettings.pathData.relativePath,
-				].flat(),
+		const fileHost = () => fileViewSettings.pathData.fileHost;
+		const relativePath = () => fileViewSettings.pathData.relativePath;
+
+		if (fileHost()) {
+			// Workaround for typescript to know that the function call isn't null
+			const fileHostVar = fileHost() as FileHostImplementations;
+
+			return fileHostVar.getDirContents(
+				[fileHostVar.root(), relativePath()].flat(),
 			);
+		}
 
 		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});
