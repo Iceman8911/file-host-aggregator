@@ -16,6 +16,7 @@ import RefreshIcon from "lucide-solid/icons/refresh-ccw";
 import SearchIcon from "lucide-solid/icons/search";
 import {
 	createEffect,
+	createMemo,
 	createSignal,
 	For,
 	Match,
@@ -67,25 +68,57 @@ export default function FileView() {
 		defaultFileViewSettings,
 	);
 
-	const filesOrFileHosts = createAsync<
+	type FilesOrFileHosts =
 		| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
 		| FileHostImplementations[]
-		| null
-	>(() => {
-		const fileHost = () => fileViewSettings.pathData.fileHost;
-		const relativePath = () => fileViewSettings.pathData.relativePath;
+		| null;
 
-		if (fileHost()) {
-			// Workaround for typescript to know that the function call isn't null
-			const fileHostVar = fileHost() as FileHostImplementations;
+	const _fetchedFilesOrFileHosts = createMemo<Promise<FilesOrFileHosts>>(
+		async () => {
+			const fileHost = () => fileViewSettings.pathData.fileHost;
+			const relativePath = () => fileViewSettings.pathData.relativePath;
 
-			return fileHostVar.getDirContents(
-				[fileHostVar.root(), relativePath()].flat(),
-			);
-		}
+			if (fileHost()) {
+				// Workaround for typescript to know that the function call isn't null
+				const fileHostVar = fileHost() as FileHostImplementations;
 
-		return Promise.resolve(Array.from(FileHost.collection.values()));
-	});
+				return fileHostVar.getDirContents(
+					[fileHostVar.root(), relativePath()].flat(),
+				);
+			}
+
+			return Array.from(FileHost.collection.values());
+		},
+	);
+
+	/** stuff like sorting */
+	const _processedFilesOrFileHosts = createMemo<Promise<FilesOrFileHosts>>(
+		async () => {
+			const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
+			if (!originalFilesOrFileHosts) return [];
+
+			// Sort alpabetically by default
+			const sorted = originalFilesOrFileHosts.sort((a, b) => {
+				const nameOfA =
+					a instanceof FileHost || a.type === "dir"
+						? a.name
+						: a.file.name(true);
+				const nameOfB =
+					b instanceof FileHost || b.type === "dir"
+						? b.name
+						: b.file.name(true);
+
+				return nameOfA >= nameOfB ? 1 : -1;
+			});
+
+			const result = sorted;
+			return result;
+		},
+	);
+
+	const displayedFilesOrFileHosts = createAsync(() =>
+		_processedFilesOrFileHosts(),
+	);
 
 	return (
 		<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
@@ -210,7 +243,7 @@ export default function FileView() {
 						</div>
 					}
 				>
-					<For each={filesOrFileHosts()}>
+					<For each={displayedFilesOrFileHosts()}>
 						{(val) => {
 							const name = val.type === "file" ? val.file.name(true) : val.name;
 
