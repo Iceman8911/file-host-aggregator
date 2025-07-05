@@ -12,6 +12,8 @@ import DefaultFolderIcon from "lucide-solid/icons/folder";
 import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
+import RefreshIcon from "lucide-solid/icons/refresh-ccw";
+import SearchIcon from "lucide-solid/icons/search";
 import {
 	createEffect,
 	createSignal,
@@ -164,7 +166,14 @@ export default function FileView() {
 			</div>
 
 			{/* Utility icons */}
-			<div></div>
+			<div class="flex gap-2 justify-center items-center text-primary *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:rounded-2xl">
+				<button type="button">
+					<SearchIcon />
+				</button>{" "}
+				<button type="button">
+					<RefreshIcon />
+				</button>
+			</div>
 
 			{/* Folder/File view */}
 			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
