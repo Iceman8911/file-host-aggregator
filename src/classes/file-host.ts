@@ -96,24 +96,27 @@ export abstract class FileHost {
 	}
 
 	/** Caches the results of `.getDirContents()` */
-	private static _dirContentCache = new QuickLRU<string, FileOrFolderRes[]>({
+	private static _dirContentCache = new QuickLRU<
+		string,
+		FileOrFolderRes[] | null
+	>({
 		maxSize: 100,
 		maxAge: 300000,
 	});
 
-	/** Ensure that the path given to it is realteive to the OPFS root
-	 *
+	/**
+	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(path: FilePath): Promise<[FileRes] | null>;
 	async getDirContents(path: DirectoryPath): Promise<FileOrFolderRes[] | null>;
 	async getDirContents(
 		path: FileOrDirectoryPath,
 	): Promise<FileOrFolderRes[] | null> {
-		const res: FileOrFolderRes[] = [];
+		const tempResult: FileOrFolderRes[] = [];
 		const parsedPath = convertPathToString(path);
 		const cachedResult = FileHost._dirContentCache.get(parsedPath);
 
-		if (cachedResult) return cachedResult;
+		if (cachedResult !== undefined) return cachedResult;
 
 		if (await hfs.isFile(parsedPath)) {
 			const filePath = path as FilePath;
@@ -123,27 +126,40 @@ export abstract class FileHost {
 		}
 
 		if (await hfs.isDirectory(parsedPath)) {
+			/** For concurrently storing the promises */
+			const filePromises: Promise<FileHostFile | null>[] = [];
+			const dirEntries: FolderRes[] = [];
+
 			for await (const entry of hfs.list(parsedPath)) {
 				const { isDirectory, isFile, name: _name } = entry;
 				const name = _name as FileName;
 
 				if (isFile) {
 					const filePath = [...path, name] as FilePath;
-
-					const possibleFile = await this.getFile(filePath);
-					if (possibleFile) res.push({ file: possibleFile, type: "file" });
+					// Collect all getFile promises without awaiting them immediately
+					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
-					res.push({ name, type: "dir" });
+					dirEntries.push({ name, type: "dir" });
 				}
 			}
+
+			// Await all file promises concurrently
+			const fetchedFiles = await Promise.allSettled(filePromises);
+
+			// Process the results of the concurrent fetches
+			for (const result of fetchedFiles) {
+				if (result.status === "fulfilled" && result.value) {
+					tempResult.push({ file: result.value, type: "file" });
+				}
+			}
+			tempResult.push(...dirEntries); // Add the directory entries
 		}
 
-		if (res.length) {
-			FileHost._dirContentCache.set(parsedPath, res);
-			return res;
-		}
+		const actualResult = tempResult.length ? tempResult : null;
 
-		return null;
+		FileHost._dirContentCache.set(parsedPath, actualResult);
+
+		return actualResult;
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
