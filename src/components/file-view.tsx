@@ -79,9 +79,9 @@ export default function FileView() {
 	});
 
 	return (
-		<div class="flex flex-col gap-8 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
+		<div class="grid grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
 			{/* Breadcrumbs bar */}
-			<div class="breadcrumbs text-sm h-10 px-4 text-primary">
+			<div class="breadcrumbs text-sm px-4 text-primary overflow-y-clip scrollbar-thin">
 				<ul class="text-[1.025rem] *:last:font-bold">
 					<li>
 						<button
@@ -163,8 +163,11 @@ export default function FileView() {
 				</ul>
 			</div>
 
+			{/* Utility icons */}
+			<div></div>
+
 			{/* Folder/File view */}
-			<div class="grow flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
 				<Suspense>
 					<For each={filesOrFileHosts()}>
 						{(val) => {

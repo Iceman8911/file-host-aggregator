@@ -14,7 +14,7 @@ export default function App() {
 	return (
 		<Router
 			root={(props) => (
-				<div class="flex w-[100vw] h-[100vh]">
+				<div class="flex w-[100vw] h-[100vh] scrollbar-thumb-primary scrollbar-track-primary-content">
 					<Nav />
 					<Suspense>{props.children}</Suspense>
 				</div>

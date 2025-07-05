@@ -27,6 +27,7 @@
 	"devDependencies": {
 		"@tailwindcss/vite": "^4.0.7",
 		"daisyui": "^5.0.43",
+		"tailwind-scrollbar": "^4.0.2",
 		"tailwindcss": "^4.0.7"
 	},
 	"engines": {
