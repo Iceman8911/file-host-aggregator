@@ -59,6 +59,9 @@ export abstract class FileHost {
 		getMetadataOnly?: boolean,
 	): Promise<void>;
 
+	/** Sometimes, the url of a file from the file host cannot be directly `fetch`ed (e.g MEGA), so this method does the required procedures and returns the file's blob if successful */
+	abstract downloadFile(url: URL): Promise<ResultType<Blob>>;
+
 	/** Takes a regular file and the path to upload it to.
 	 *
 	 * Returns the url to the uploaded file if successful
@@ -349,14 +352,37 @@ export class FileHostFile {
 		return "";
 	}
 
-	async file(): Promise<Blob> {
-		if (this._file) return this._file;
+	async file(
+		/** If true, the file is always fetched from the file host */
+		forceDownload = false,
+	): Promise<Blob> {
+		if (this._file && !forceDownload) return this._file;
 		else {
-			const blob = await (await fetch(this._url)).blob();
-			const file = new File([blob], this.name(true));
-			this._file = file;
+			const fileHost = this.fileHost;
 
-			return file;
+			// Use the file host's implementation if present and successful, otherwise, fall back to a generic fetch
+			try {
+				if (fileHost) {
+					const res = await fileHost.downloadFile(this._url);
+
+					if (res.state === "error")
+						throw `Failed to fetch file from ${fileHost.name}`;
+
+					const { result } = res;
+					this._file = result;
+					this.saveToDisk();
+					return result;
+				} else {
+					throw new Error("No filehost found. Falling back to default fetch");
+				}
+			} catch {
+				const blob = await (await fetch(this._url)).blob();
+				const file = new File([blob], this.name(true));
+				this._file = file;
+				this.saveToDisk();
+
+				return file;
+			}
 		}
 	}
 
@@ -403,8 +429,17 @@ export class FileHostFile {
 		return FileHost.collection.get(this._fileHostId) ?? null;
 	}
 
+	// TODO: Add string compression. Maybe we can apply it conditionally depending on the blob size
 	static async serialize(instance: FileHostFile) {
-		return stringify(instance);
+		const shouldSerializeAsync = !!Object.values(instance).find(
+			(val: unknown) => {
+				return val instanceof Blob;
+			},
+		);
+
+		return shouldSerializeAsync
+			? stringifyAsync(instance)
+			: stringify(instance);
 	}
 
 	async saveToDisk() {
@@ -456,6 +491,8 @@ export class FileHostFile {
 			// Store the file in the filesystem.
 			await newClass.saveToDisk();
 		}
+
+		console.log(newClass);
 
 		return newClass;
 	}

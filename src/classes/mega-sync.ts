@@ -14,7 +14,7 @@ import type {
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
-const { Storage: MegaSyncStorage } = await import("megajs");
+const { Storage: MegaSyncStorage, File: MegaFile } = await import("megajs");
 
 export class MegaSyncFileHost extends FileHost {
 	type = gFileHosts.MEGA;
@@ -118,22 +118,36 @@ export class MegaSyncFileHost extends FileHost {
 		}
 	}
 
+	/** TODO: Depending on the file size, use a stream */
+	private static async _downloadFileContent(
+		file: typeof MegaFile.prototype,
+		onlyMetaData = false,
+	) {
+		if (onlyMetaData) return undefined;
+
+		return new Blob([await file.downloadBuffer({})]);
+	}
+
+	async downloadFile(url: URL): Promise<ResultType<Blob>> {
+		try {
+			const fileFromUrl = MegaFile.fromURL(url.toString());
+			const possibleBlob =
+				await MegaSyncFileHost._downloadFileContent(fileFromUrl);
+
+			if (!possibleBlob) throw Error("File unavailable");
+
+			return { result: possibleBlob, state: "success" };
+		} catch (e) {
+			return { error: e, state: "error" };
+		}
+	}
+
 	async downloadFiles(getMetadataOnly = true): Promise<void> {
 		const { _storage } = this;
 		if (!_storage) return;
 
 		// Get references to all the files
 		const fileRefs = _storage.filter((_) => true);
-
-		// TODO: Depending on the file size, use a stream
-		const downloadFileContent = async (
-			file: MutableFile,
-			onlyMetaData = true,
-		) => {
-			if (onlyMetaData) return undefined;
-
-			return new Blob([await file.downloadBuffer({})]);
-		};
 
 		for (const ref of fileRefs) {
 			// console.log(ref);
@@ -142,7 +156,10 @@ export class MegaSyncFileHost extends FileHost {
 			if (!ref.directory) {
 				await FileHostFile.init({
 					dateCreated: new Date(ref.createdAt),
-					fileData: await downloadFileContent(ref, getMetadataOnly),
+					fileData: await MegaSyncFileHost._downloadFileContent(
+						ref,
+						getMetadataOnly,
+					),
 					fileHostId: this.id,
 					fileUrl: await ref.link({ noKey: false }),
 					name: ref.name ?? DEFAULT_FILE_NAME,
@@ -187,7 +204,10 @@ export class MegaSyncFileHost extends FileHost {
 				]).forEach(async ({ file, relativePath }) => {
 					await FileHostFile.init({
 						dateCreated: new Date(file.createdAt),
-						fileData: await downloadFileContent(file, getMetadataOnly),
+						fileData: await MegaSyncFileHost._downloadFileContent(
+							file,
+							getMetadataOnly,
+						),
 						fileHostId: this.id,
 						fileUrl: await file.link({ noKey: false }),
 						name: file.name ?? DEFAULT_FILE_NAME,
