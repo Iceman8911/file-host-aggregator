@@ -144,7 +144,7 @@ export class MegaSyncFileHost extends FileHost {
 					dateCreated: new Date(ref.createdAt),
 					fileData: await downloadFileContent(ref, getMetadataOnly),
 					fileHostId: this.id,
-					fileUrl: await ref.link({ noKey: true }),
+					fileUrl: await ref.link({ noKey: false }),
 					name: ref.name ?? DEFAULT_FILE_NAME,
 					relativePath: ROOT_PATH,
 				});
@@ -189,7 +189,7 @@ export class MegaSyncFileHost extends FileHost {
 						dateCreated: new Date(file.createdAt),
 						fileData: await downloadFileContent(file, getMetadataOnly),
 						fileHostId: this.id,
-						fileUrl: await file.link({ noKey: true }),
+						fileUrl: await file.link({ noKey: false }),
 						name: file.name ?? DEFAULT_FILE_NAME,
 						relativePath,
 					});
