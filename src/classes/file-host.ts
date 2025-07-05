@@ -43,15 +43,12 @@ export abstract class FileHost {
 	/** In memory collection of all created file hosts */
 	static collection = new ReactiveMap<FileHostID, FileHostImplementations>();
 
-	constructor(public name: string) {
-		FileHost.collection.set(
-			this.id,
-			this as unknown as FileHostImplementations,
-		);
-		// signalify(this);
-	}
+	constructor(public name: string) {}
 
-	/** **MUST BE IMPLEMENTED IN DERIVED CLASSES BEFOR USE** */
+	/** **MUST BE IMPLEMENTED IN DERIVED CLASSES BEFOR USE**
+	 *
+	 * Make sure that the instance is properly initialized before fetching files.
+	 */
 	static init(...args: unknown[]): Promise<FileHostImplementations> {
 		throw new Error("Method not implemented! Use derived class");
 	}
@@ -174,11 +171,18 @@ export abstract class FileHost {
 		return FileHost.root(this.id);
 	}
 
-	/** Saves the instance to disk
+	/** Saves the instance to memory and disk.
+	 *
+	 * Call this in the static `.init()` method of implementations
 	 *
 	 * e.g `/file_host/123po12.bin`
 	 */
 	save() {
+		FileHost.collection.set(
+			this.id,
+			this as unknown as FileHostImplementations,
+		);
+
 		return hfs.write(
 			convertPathToString(FileHost.root(this.id, true)),
 			JSON.stringify(this.export()),
