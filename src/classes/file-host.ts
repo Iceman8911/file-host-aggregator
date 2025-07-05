@@ -263,7 +263,7 @@ export class FileHostFile {
 	/** The extension of the file, e.g `webp`, `7z`, etc */
 	private _ext: string;
 	readonly path: FilePath;
-	readonly dateCreated = new Date();
+	readonly dateCreated: Date;
 	dateEdited = new Date();
 	private readonly _url: URL;
 	/** image string, could be a url, or raw base64 data */
@@ -278,10 +278,18 @@ export class FileHostFile {
 		relativePath: DirectoryPath;
 		fileUrl: URL | string;
 		fileHostId: FileHostID;
+		dateCreated?: Date;
 		/** In cases where it's convenient enough to get the file data */
 		fileData?: Blob;
 	}) {
-		const { fileData, fileHostId, fileUrl, name: argName, relativePath } = args;
+		const {
+			dateCreated,
+			fileData,
+			fileHostId,
+			fileUrl,
+			name: argName,
+			relativePath,
+		} = args;
 
 		const [name, ext] = argName.split(/\.(?!.*\.)/);
 		this._name = name;
@@ -289,6 +297,7 @@ export class FileHostFile {
 		this._url = new URL(fileUrl);
 		this._fileHostId = fileHostId;
 		this._file = fileData ?? null;
+		this.dateCreated = dateCreated ?? new Date();
 
 		this.path = [
 			...(this.fileHost?.root() ?? []),

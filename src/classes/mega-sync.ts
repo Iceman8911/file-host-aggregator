@@ -141,6 +141,7 @@ export class MegaSyncFileHost extends FileHost {
 			// It's a file at the root level
 			if (!ref.directory) {
 				await FileHostFile.init({
+					dateCreated: new Date(ref.createdAt),
 					fileData: await downloadFileContent(ref, getMetadataOnly),
 					fileHostId: this.id,
 					fileUrl: await ref.link({ noKey: true }),
@@ -184,7 +185,9 @@ export class MegaSyncFileHost extends FileHost {
 					...ROOT_PATH,
 					ref.name ?? DEFAULT_FILE_NAME,
 				]).forEach(async ({ file, relativePath }) => {
+					console.log(file);
 					await FileHostFile.init({
+						dateCreated: new Date(file.createdAt),
 						fileData: await downloadFileContent(file, getMetadataOnly),
 						fileHostId: this.id,
 						fileUrl: await file.link({ noKey: true }),
