@@ -53,14 +53,14 @@ export abstract class FileHost {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
-	/** Downloads and caches all files (or only their metadata) from the file host into the file system */
+	/** Downloads and caches all files (or only their metadata) from the file host, as `FileHostFile` instances into the file system */
 	abstract downloadFiles(
 		/** If `true`, only the bare metadata (like path data, names, sizes) are retrieved, but the file's actual content is not */
 		getMetadataOnly?: boolean,
 	): Promise<void>;
 
 	/** Sometimes, the url of a file from the file host cannot be directly `fetch`ed (e.g MEGA), so this method does the required procedures and returns the file's blob if successful */
-	abstract downloadFile(url: URL): Promise<ResultType<Blob>>;
+	abstract downloadFileContent(url: URL): Promise<ResultType<Blob>>;
 
 	/** Takes a regular file and the path to upload it to.
 	 *
@@ -379,7 +379,7 @@ export class FileHostFile {
 			// Use the file host's implementation if present and successful, otherwise, fall back to a generic fetch
 			try {
 				if (fileHost) {
-					const res = await fileHost.downloadFile(this._url);
+					const res = await fileHost.downloadFileContent(this._url);
 
 					if (res.state === "error")
 						throw `Failed to fetch file from ${fileHost.name}`;

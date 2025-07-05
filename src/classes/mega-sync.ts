@@ -127,7 +127,7 @@ export class MegaSyncFileHost extends FileHost {
 		return new Blob([await file.downloadBuffer({})]);
 	}
 
-	async downloadFile(url: URL): Promise<ResultType<Blob>> {
+	async downloadFileContent(url: URL): Promise<ResultType<Blob>> {
 		try {
 			const fileFromUrl = MegaFile.fromURL(url.toString());
 			const possibleBlob =
