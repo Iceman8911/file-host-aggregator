@@ -53,7 +53,8 @@ export abstract class FileHost {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
-	/** Downloads and caches all files (or only their metadata) from the file host, as `FileHostFile` instances into the file system */
+	/** Downloads and caches all files (or only their metadata) from the file host, as `FileHostFile` instances into the file system.
+	 */
 	abstract downloadFiles(
 		/** If `true`, only the bare metadata (like path data, names, sizes) are retrieved, but the file's actual content is not */
 		getMetadataOnly?: boolean,
@@ -80,7 +81,7 @@ export abstract class FileHost {
 		return hfs.isFile(convertPathToString(path));
 	}
 
-	/**  */
+	/** Retrieves the local copy of the file at the path given, if any */
 	async getFile(path: FilePath): Promise<FileHostFile | null> {
 		const parsedPath = convertPathToString(path);
 		if (!(await hfs.isFile(parsedPath))) return null;
@@ -327,9 +328,6 @@ export class FileHostFile {
 			...relativePath,
 			this.name(true),
 		];
-
-		// TODO - Determine file type without necessarily downloading the entire file
-		// const { _file } = this;
 	}
 
 	name(): string;
@@ -368,7 +366,8 @@ export class FileHostFile {
 		return "";
 	}
 
-	async file(
+	/** Fetches and stores the actual content the instance represents. */
+	async getFile(
 		/** If true, the file is always fetched from the file host */
 		forceDownload = false,
 	): Promise<Blob> {
@@ -496,18 +495,22 @@ export class FileHostFile {
 		return newClass;
 	}
 
-	/** ALWAYS USE THIS TO GET THE CLASS */
+	/** **ALWAYS USE THIS TO GET THE CLASS**
+	 *
+	 * Trying to initialize a new instance, while previous data for a previous instance with the same file name exists, the new instance will not override the old one **UNLESS** the new instance is newer
+	 */
 	static async init(...args: ConstructorParameters<typeof FileHostFile>) {
-		const newClass = new FileHostFile(...args);
-		const parentFileHost = newClass.fileHost;
+		const instance = new FileHostFile(...args);
 
-		await newClass._cacheMimeType();
+		const localCopy = await instance.fileHost?.getFile(instance.path);
 
-		if (parentFileHost) {
-			// Store the file in the filesystem.
-			await newClass.saveToDisk();
+		// Only use the new instance if there is no local copy or if it's newer
+		if (!localCopy || instance.dateCreated > localCopy.dateCreated) {
+			await instance._cacheMimeType();
+			await instance.saveToDisk();
+			return instance;
 		}
 
-		return newClass;
+		return localCopy;
 	}
 }
