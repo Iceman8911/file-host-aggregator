@@ -81,7 +81,7 @@ export default function FileView() {
 	return (
 		<div class="grid grid-cols-[1fr_30%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
 			{/* Breadcrumbs bar */}
-			<div class="breadcrumbs text-sm sm:text-[1.025rem] px-4 text-primary overflow-y-clip scrollbar-thin">
+			<div class="breadcrumbs text-sm sm:text-[1.025rem] px-4 text-primary overflow-y-clip scrollbar-thin select-none">
 				<ul class="*:last:font-bold">
 					<li>
 						<button
