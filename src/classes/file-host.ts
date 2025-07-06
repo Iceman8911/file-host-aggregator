@@ -34,7 +34,11 @@ type FileOrFolderRes = FileRes | FolderRes;
 const FILE_HOST = "file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
 
-/** Every file host (e.g Mega, MediaFire, etc) must implement this */
+/** Every file host (e.g Mega, MediaFire, etc) must implement this
+ *
+ * Terms:
+ *  - `.get...()` means the method is local, in the sense that it only looks through cached files
+ */
 export abstract class FileHost {
 	readonly id: FileHostID = generateUUID<FileHostID>();
 	dateCreated = new Date();
@@ -107,7 +111,6 @@ export abstract class FileHost {
 		for await (const entry of hfs.walk(convertPathToString(this.root()), {
 			entryFilter: (entry) => entry.isFile,
 		})) {
-			console.log([this.root(), entry.path.split("/")].flat());
 			filePromises.push(
 				this.getFile([this.root(), entry.path.split("/")].flat() as FilePath),
 			);
@@ -306,6 +309,7 @@ export class FileHostFile {
 	private _name: string;
 	/** The extension of the file, e.g `webp`, `7z`, etc */
 	private _ext: string;
+	/** Absolute path from the root of the OPFS */
 	readonly path: FilePath;
 	readonly dateCreated: Date;
 	/** In bytes */
@@ -416,7 +420,7 @@ export class FileHostFile {
 					const res = await fileHost.downloadFileContent(this.url);
 
 					if (res.state === "error")
-						throw `Failed to fetch file from ${fileHost.name}`;
+						throw Error(`Failed to fetch file from ${fileHost.name}`);
 
 					const { result } = res;
 					this._file = result;
@@ -424,7 +428,7 @@ export class FileHostFile {
 					this.saveToDisk();
 					return result;
 				} else {
-					throw new Error("No filehost found. Falling back to default fetch");
+					throw Error("No filehost found. Falling back to default fetch");
 				}
 			} catch {
 				const blob = await (await fetch(this.url)).blob();
