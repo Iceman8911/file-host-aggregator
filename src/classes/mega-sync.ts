@@ -173,6 +173,7 @@ export class MegaSyncFileHost extends FileHost {
 					fileUrl: await ref.link({ noKey: false }),
 					name: ref.name ?? DEFAULT_FILE_NAME,
 					relativePath: ROOT_PATH,
+					size: ref.size,
 				});
 			} else {
 				type FileAndPath = { file: MutableFile; relativePath: DirectoryPath };
@@ -221,6 +222,7 @@ export class MegaSyncFileHost extends FileHost {
 						fileUrl: await file.link({ noKey: false }),
 						name: file.name ?? DEFAULT_FILE_NAME,
 						relativePath,
+						size: file.size,
 					});
 				});
 			}

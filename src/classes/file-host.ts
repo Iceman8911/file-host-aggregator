@@ -308,6 +308,9 @@ export class FileHostFile {
 	private _ext: string;
 	readonly path: FilePath;
 	readonly dateCreated: Date;
+	/** In bytes */
+	size: number;
+	// UNUSED
 	dateEdited = new Date();
 	private readonly _url: URL;
 	/** image string, could be a url, or raw base64 data */
@@ -323,6 +326,7 @@ export class FileHostFile {
 		fileUrl: URL | string;
 		fileHostId: FileHostID;
 		dateCreated?: Date;
+		size?: number;
 		/** In cases where it's convenient enough to get the file data */
 		fileData?: Blob;
 	}) {
@@ -333,6 +337,7 @@ export class FileHostFile {
 			fileUrl,
 			name: argName,
 			relativePath,
+			size,
 		} = args;
 
 		const [name, ext] = argName.split(/\.(?!.*\.)/);
@@ -342,6 +347,7 @@ export class FileHostFile {
 		this._fileHostId = fileHostId;
 		this._file = fileData ?? null;
 		this.dateCreated = dateCreated ?? new Date();
+		this.size = size ?? 0;
 
 		this.path = [
 			...(this.fileHost?.root() ?? []),
@@ -414,6 +420,7 @@ export class FileHostFile {
 
 					const { result } = res;
 					this._file = result;
+					this.size = result.size;
 					this.saveToDisk();
 					return result;
 				} else {
@@ -423,6 +430,7 @@ export class FileHostFile {
 				const blob = await (await fetch(this._url)).blob();
 				const file = new File([blob], this.name(true));
 				this._file = file;
+				this.size = file.size;
 				this.saveToDisk();
 
 				return file;
