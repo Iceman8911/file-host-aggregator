@@ -12,6 +12,7 @@ import DefaultFolderIcon from "lucide-solid/icons/folder";
 import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
+import InfoIcon from "lucide-solid/icons/info";
 import RefreshIcon from "lucide-solid/icons/refresh-ccw";
 import SearchIcon from "lucide-solid/icons/search";
 import {
@@ -37,6 +38,7 @@ import { generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type { DirectoryPath } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
+import CustomContextMenu from "./menu/custom-context-menu";
 import FileDetails from "./modal/file-details";
 
 type FilePathTracker = {
@@ -331,95 +333,158 @@ export default function FileView() {
 									val.type === "file" ? val.file.name(true) : val.name;
 
 								return (
-									<button
-										type="button"
-										class="relative flex flex-col justify-center items-center w-1/6 min-w-20 max-w-25 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
-										title={name}
-										onClick={(_) => {
-											if (val.type === "file") {
-												// Open the dialog with the data it should show
-												setFileDetailsDialogData(
+									<CustomContextMenu
+										closeOnClick={true}
+										contextMenu={
+											<>
+												<Switch>
+													<Match
+														when={val instanceof FileHost || val.type === "dir"}
+													>
+														{(_) => (
+															<li>
+																<button
+																	type="button"
+																	onClick={(_) =>
+																		setFileViewSettings(
+																			produce((state) => {
+																				if (val instanceof FileHost) {
+																					state.pathData.fileHost = val;
+																					state.pathData.relativePath =
+																						ROOT_PATH;
+																				} else if (val.type === "dir") {
+																					state.pathData.relativePath = [
+																						state.pathData.relativePath,
+																						val.name,
+																					].flat();
+																				}
+																			}),
+																		)
+																	}
+																>
+																	<Show
+																		when={val instanceof FileHost}
+																		fallback={<OpenedFolderIcon />}
+																	>
+																		<HardDriveIcon />
+																	</Show>
+																	Open
+																</button>
+															</li>
+														)}
+													</Match>
+												</Switch>
+												<li>
+													<button type="button">Bob</button>
+												</li>
+												<li>
+													<button type="button">Bob</button>
+												</li>
+												<li>
+													<button type="button">E</button>
+												</li>
+												<li>
+													<button
+														type="button"
+														onClick={(_) => {
+															if (val.type === "file") {
+																// Open the dialog with the data it should show
+																setFileDetailsDialogData(
+																	produce((state) => {
+																		state.data = val.file;
+																	}),
+																);
+																(
+																	document.getElementById(
+																		fileDetailsDialogData.modalId,
+																	) as HTMLDialogElement | undefined
+																)?.showModal();
+															}
+														}}
+													>
+														<InfoIcon />
+														Details
+													</button>
+												</li>
+											</>
+										}
+									>
+										<button
+											type="button"
+											class="relative flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+											title={name}
+											onClick={(_) => {
+												setFileViewSettings(
 													produce((state) => {
-														state.data = val.file;
+														if (val instanceof FileHost) {
+															state.pathData.fileHost = val;
+															state.pathData.relativePath = ROOT_PATH;
+														} else if (val.type === "dir") {
+															state.pathData.relativePath = [
+																state.pathData.relativePath,
+																val.name,
+															].flat();
+														}
 													}),
 												);
-												(
-													document.getElementById(
-														fileDetailsDialogData.modalId,
-													) as HTMLDialogElement | undefined
-												)?.showModal();
-											}
-
-											setFileViewSettings(
-												produce((state) => {
-													if (val instanceof FileHost) {
-														state.pathData.fileHost = val;
-														state.pathData.relativePath = ROOT_PATH;
-													} else if (val.type === "dir") {
-														state.pathData.relativePath = [
-															state.pathData.relativePath,
-															val.name,
-														].flat();
-													}
-												}),
-											);
-										}}
-									>
-										{/* <div
+											}}
+										>
+											{/* <div
 										class="tooltip tooltip-bottom absolute size-full"
 										data-tip={name}
 									> */}
-										<div class="relative size-fit *:first:size-16">
-											<Switch>
-												<Match when={val instanceof FileHost}>
-													<HardDriveIcon />
-													<Dynamic
-														component={gFileHostIcons[(val as FileHost).type]}
-														class="absolute right-0 bottom-0 size-6 opacity-75"
-													/>
-												</Match>
+											<div class="relative size-fit *:first:size-16">
+												<Switch>
+													<Match when={val instanceof FileHost}>
+														<HardDriveIcon />
+														<Dynamic
+															component={gFileHostIcons[(val as FileHost).type]}
+															class="absolute right-0 bottom-0 size-6 opacity-75"
+														/>
+													</Match>
 
-												<Match when={val.type === "dir"}>
-													<DefaultFolderIcon />
-												</Match>
+													<Match when={val.type === "dir"}>
+														<DefaultFolderIcon />
+													</Match>
 
-												<Match when={val.type === "file" && val.file}>
-													{(file) => (
-														<Switch fallback={<UnknownFileIcon />}>
-															<Match when={file().type === FileType.ARCHIVE}>
-																<ArchiveFileIcon />
-															</Match>
+													<Match when={val.type === "file" && val.file}>
+														{(file) => (
+															<Switch fallback={<UnknownFileIcon />}>
+																<Match when={file().type === FileType.ARCHIVE}>
+																	<ArchiveFileIcon />
+																</Match>
 
-															<Match when={file().type === FileType.AUDIO}>
-																<AudioFileIcon />
-															</Match>
+																<Match when={file().type === FileType.AUDIO}>
+																	<AudioFileIcon />
+																</Match>
 
-															<Match when={file().type === FileType.DOCUMENT}>
-																<DocumentFileIcon />
-															</Match>
+																<Match when={file().type === FileType.DOCUMENT}>
+																	<DocumentFileIcon />
+																</Match>
 
-															<Match when={file().type === FileType.IMAGE}>
-																<ImageFileIcon />
-															</Match>
+																<Match when={file().type === FileType.IMAGE}>
+																	<ImageFileIcon />
+																</Match>
 
-															<Match when={file().type === FileType.TEXT}>
-																<TextFileIcon />
-															</Match>
+																<Match when={file().type === FileType.TEXT}>
+																	<TextFileIcon />
+																</Match>
 
-															<Match when={file().type === FileType.VIDEO}>
-																<VideoFileIcon />
-															</Match>
-														</Switch>
-													)}
-												</Match>
-											</Switch>
-										</div>
+																<Match when={file().type === FileType.VIDEO}>
+																	<VideoFileIcon />
+																</Match>
+															</Switch>
+														)}
+													</Match>
+												</Switch>
+											</div>
 
-										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{name}
-										</p>
-										{/* </div> */}
-									</button>
+											<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+												{name}
+											</p>
+											{/* </div> */}
+										</button>
+									</CustomContextMenu>
 								);
 							}}
 						</For>
