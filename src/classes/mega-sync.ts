@@ -1,6 +1,8 @@
+import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { gFileHosts } from "~/declarations/enums";
 import {
+	convertPathToString,
 	gIsUserConnectedToInternet,
 	gThrowIfNoInternet,
 } from "~/declarations/functions";
@@ -221,6 +223,26 @@ export class MegaSyncFileHost extends FileHost {
 						relativePath,
 					});
 				});
+			}
+		}
+
+		// Ensure that all unneeded files are gone
+		await this.trimOutdatedCache();
+	}
+
+	async trimOutdatedCache(): Promise<void> {
+		const { _storage } = this;
+		if (!_storage) return;
+
+		const allFiles = await this.getAllFiles();
+
+		for (const file of allFiles) {
+			const fileRelativePath = file.relativePath;
+			const possibleFileOnFileHost = _storage.root.navigate(fileRelativePath);
+
+			if (!possibleFileOnFileHost) {
+				// The file doesn't exist on the server so ensure it isn't on the client too
+				await hfs.delete(convertPathToString(file.path));
 			}
 		}
 	}

@@ -77,6 +77,10 @@ export abstract class FileHost {
 	/** Attempts to delete a file from the file host */
 	abstract deleteFile(file: FilePath): ResultType<never>;
 
+	/** Get's rid of non-existent files (i.e you deleted a file on the file host but it still exists on the client) */
+	abstract trimOutdatedCache(): Promise<void>;
+
+	/** Checks if the file exists as a local copy */
 	async hasFile(path: FilePath): Promise<boolean> {
 		return hfs.isFile(convertPathToString(path));
 	}
@@ -94,6 +98,22 @@ export abstract class FileHost {
 			possibleFileData,
 			this as unknown as FileHostImplementations,
 		);
+	}
+
+	/** Returns all the files present in the local filesystem */
+	async getAllFiles(): Promise<FileHostFile[]> {
+		const filePromises: Promise<FileHostFile | null>[] = [];
+
+		for await (const entry of hfs.walk(convertPathToString(this.root()), {
+			entryFilter: (entry) => entry.isFile,
+		})) {
+			console.log([this.root(), entry.path.split("/")].flat());
+			filePromises.push(
+				this.getFile([this.root(), entry.path.split("/")].flat() as FilePath),
+			);
+		}
+
+		return (await Promise.all(filePromises)).filter((val) => val != null);
 	}
 
 	/** Caches the results of `.getDirContents()` */
@@ -335,6 +355,15 @@ export class FileHostFile {
 	name(includeExtension: true): FileName;
 	name(includeExtension = false): string {
 		return includeExtension ? `${this._name}.${this._ext}` : this._name;
+	}
+
+	/** The file's path relative to it's file host */
+	get relativePath(): FilePath {
+		const fileHostSet = new Set<string>(this.fileHost?.root() ?? []);
+
+		return this.path.filter(
+			(pathFragment) => !fileHostSet.has(pathFragment),
+		) as FilePath;
 	}
 
 	// If the actual thumbnail for the file cannot be obtained, fall back to default placeholders
