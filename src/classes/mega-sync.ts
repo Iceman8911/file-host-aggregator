@@ -17,6 +17,7 @@ import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
 const { Storage: MegaSyncStorage, File: MegaFile } = await import("megajs");
+const USER_AGENT = "FileHostAggregator/0.1";
 
 export class MegaSyncFileHost extends FileHost {
 	type = gFileHosts.MEGA;
@@ -73,7 +74,7 @@ export class MegaSyncFileHost extends FileHost {
 			instance._initMEGAStorage({
 				email,
 				password,
-				userAgent: "FileHostAggregator/0.1",
+				userAgent: USER_AGENT,
 			});
 		} catch (_) {
 			console.error(
@@ -152,14 +153,21 @@ export class MegaSyncFileHost extends FileHost {
 	}
 
 	async downloadFiles(getMetadataOnly = true): Promise<void> {
-		const { _storage } = this;
-		if (!_storage) return;
+		const { _storage, email, password } = this;
+		if (!_storage) {
+			this._initMEGAStorage({
+				email,
+				password,
+				userAgent: USER_AGENT,
+			});
+			return;
+		}
 
 		// Get references to all the files
 		const fileRefs = _storage.filter((_) => true);
 
 		for (const ref of fileRefs) {
-			console.log(ref);
+			// console.log(ref);
 
 			// It's a file at the root level
 			if (!ref.directory) {
