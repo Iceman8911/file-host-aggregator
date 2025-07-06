@@ -312,7 +312,7 @@ export class FileHostFile {
 	size: number;
 	// UNUSED
 	dateEdited = new Date();
-	private readonly _url: URL;
+	readonly url: URL;
 	/** image string, could be a url, or raw base64 data */
 	private _thumbnail: string | null = null;
 	private _file: Blob | null = null;
@@ -343,7 +343,7 @@ export class FileHostFile {
 		const [name, ext] = argName.split(/\.(?!.*\.)/);
 		this._name = name;
 		this._ext = ext;
-		this._url = new URL(fileUrl);
+		this.url = new URL(fileUrl);
 		this._fileHostId = fileHostId;
 		this._file = fileData ?? null;
 		this.dateCreated = dateCreated ?? new Date();
@@ -413,7 +413,7 @@ export class FileHostFile {
 			// Use the file host's implementation if present and successful, otherwise, fall back to a generic fetch
 			try {
 				if (fileHost) {
-					const res = await fileHost.downloadFileContent(this._url);
+					const res = await fileHost.downloadFileContent(this.url);
 
 					if (res.state === "error")
 						throw `Failed to fetch file from ${fileHost.name}`;
@@ -427,7 +427,7 @@ export class FileHostFile {
 					throw new Error("No filehost found. Falling back to default fetch");
 				}
 			} catch {
-				const blob = await (await fetch(this._url)).blob();
+				const blob = await (await fetch(this.url)).blob();
 				const file = new File([blob], this.name(true));
 				this._file = file;
 				this.size = file.size;
