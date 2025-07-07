@@ -190,14 +190,9 @@ export abstract class FileHost {
 					// Collect all getFile promises without awaiting them immediately
 					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
-					dirEntries.push({
-						dateEdited: new Date(0),
-						fileCount: 0,
-						folderCount: 0,
-						name,
-						path: [...path, name] as DirectoryPath,
-						size: 0,
-					});
+					dirEntries.push(
+						await this.getFolderStats([...path, name] as DirectoryPath),
+					);
 				}
 			}
 
@@ -253,6 +248,7 @@ export abstract class FileHost {
 				} else {
 					accumulatedStats.folderCount++;
 					const childPath = [...directoryPath, child.name] as DirectoryPath;
+					accumulatedStats.path = [...directoryPath];
 					const childStats = await recursivelyGetFolderStats(childPath, {
 						...accumulatedStats,
 						path: childPath,
@@ -276,7 +272,7 @@ export abstract class FileHost {
 			fileCount: 0,
 			folderCount: 0,
 			name: directoryPath[directoryPath.length - 1],
-			path: ROOT_PATH,
+			path: directoryPath,
 			size: 0,
 		});
 	}
