@@ -224,6 +224,11 @@ export abstract class FileHost {
 		FileHost._cacheConfig,
 	);
 
+	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
+	clearFolderStatsCache() {
+		this._folderStatsCache.clear();
+	}
+
 	async getFolderStats(directoryPath: DirectoryPath): Promise<FolderStats> {
 		const recursivelyGetFolderStats = async (
 			directoryPath: Readonly<DirectoryPath>,
@@ -274,6 +279,11 @@ export abstract class FileHost {
 			path: ROOT_PATH,
 			size: 0,
 		});
+	}
+
+	clearAllCaches() {
+		this.clearDirContentCache();
+		this.clearFolderStatsCache();
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.

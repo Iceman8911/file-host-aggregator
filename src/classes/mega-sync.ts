@@ -269,6 +269,7 @@ export class MegaSyncFileHost extends FileHost {
 		}
 
 		this.clearDirContentCache();
+		this.clearFolderStatsCache();
 	}
 
 	private async _getAccountInfo() {
