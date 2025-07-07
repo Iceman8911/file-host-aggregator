@@ -49,6 +49,18 @@ export class MegaSyncFileHost extends FileHost {
 		return this._storage;
 	}
 
+	/** Returns the MEGA storage object. If it is not initialized, it will be initialized */
+	private async _getStorage() {
+		return (
+			this._storage ??
+			(await this._initMEGAStorage({
+				email: this.email,
+				password: this.password,
+				userAgent: USER_AGENT,
+			}))
+		);
+	}
+
 	/** Use this to initialize the file host. Can also be used to restore serialized data */
 	static override async init(
 		arg:
@@ -257,5 +269,17 @@ export class MegaSyncFileHost extends FileHost {
 		}
 
 		this.clearDirContentCache();
+	}
+
+	private async _getAccountInfo() {
+		return (await this._getStorage()).getAccountInfo();
+	}
+
+	async spaceTotal(): Promise<number> {
+		return (await this._getAccountInfo()).spaceTotal;
+	}
+
+	async spaceUsed(): Promise<number> {
+		return (await this._getAccountInfo()).spaceUsed;
 	}
 }
