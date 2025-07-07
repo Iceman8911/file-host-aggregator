@@ -1,5 +1,6 @@
 import { createAsync } from "@solidjs/router";
 import CloudIcon from "lucide-solid/icons/cloud";
+import CopyIcon from "lucide-solid/icons/copy";
 import DefaultFileIcon from "lucide-solid/icons/file";
 import ArchiveFileIcon from "lucide-solid/icons/file-archive";
 import AudioFileIcon from "lucide-solid/icons/file-audio";
@@ -13,8 +14,10 @@ import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import InfoIcon from "lucide-solid/icons/info";
+import MoveIcon from "lucide-solid/icons/move-up-left";
 import RefreshIcon from "lucide-solid/icons/refresh-ccw";
 import SearchIcon from "lucide-solid/icons/search";
+import TrashIcon from "lucide-solid/icons/trash-2";
 import { createMemo, For, Match, Show, Suspense, Switch } from "solid-js";
 import { createStore, produce, type SetStoreFunction } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
@@ -423,13 +426,22 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					</Match>
 				</Switch>
 				<li>
-					<button type="button">Bob</button>
+					<button type="button">
+						<CopyIcon />
+						Copy
+					</button>
 				</li>
 				<li>
-					<button type="button">Bob</button>
+					<button type="button">
+						<MoveIcon />
+						Move
+					</button>
 				</li>
 				<li>
-					<button type="button">E</button>
+					<button type="button" class="text-error">
+						<TrashIcon />
+						Delete
+					</button>
 				</li>
 				<li>
 					<button
