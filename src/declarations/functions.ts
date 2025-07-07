@@ -25,7 +25,7 @@ export async function gThrowIfNoInternet(): Promise<void> {
 
 // For paths
 const pathCache = new WeakMap<FileOrDirectoryPath, string>();
-export function convertPathToString(path: FileOrDirectoryPath) {
+export function convertPathToString(path: Readonly<FileOrDirectoryPath>) {
 	return (
 		pathCache.get(path) ?? pathCache.set(path, path.join("/")).get(path) ?? ""
 	);

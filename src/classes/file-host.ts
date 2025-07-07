@@ -26,10 +26,27 @@ export type FileHostID = Brand<UUID, "FileHostID">;
 export type FileHostImplementations = MegaSyncFileHost;
 export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 
-// For `.getDirContents()`
-type FileRes = { type: "file"; file: FileHostFile };
-type FolderRes = { type: "dir"; name: string };
-type FileOrFolderRes = FileRes | FolderRes;
+export type FolderStats = {
+	/** In bytes */
+	size: number;
+	/** The value of this is the same as the creation date of it's most recent descendant file or folder (recursive) */
+	dateEdited: Date;
+	/** Number of descendant files */
+	fileCount: number;
+	/** Number of descendant folders */
+	folderCount: number;
+	/** The path to the folder */
+	path: DirectoryPath;
+	/** The name of the folder */
+	name: string;
+};
+
+export type FileOrDirectoryOrFileHost =
+	| FileHostFile
+	| FileHostImplementations
+	| FolderStats;
+
+export type FileOrDirectory = FileHostFile | FolderStats;
 
 const FILE_HOST = "file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
@@ -46,6 +63,11 @@ export abstract class FileHost {
 
 	/** In memory collection of all created file hosts */
 	static collection = new ReactiveMap<FileHostID, FileHostImplementations>();
+
+	private static readonly _cacheConfig = {
+		maxSize: 100,
+		maxAge: 300000,
+	} as const;
 
 	constructor(public name: string) {}
 
@@ -120,10 +142,9 @@ export abstract class FileHost {
 	}
 
 	/** Caches the results of `.getDirContents()` */
-	private _dirContentCache = new QuickLRU<string, FileOrFolderRes[] | null>({
-		maxSize: 100,
-		maxAge: 300000,
-	});
+	private _dirContentCache = new QuickLRU<string, FileOrDirectory[] | null>(
+		FileHost._cacheConfig,
+	);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
 	clearDirContentCache() {
@@ -133,12 +154,16 @@ export abstract class FileHost {
 	/**
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
-	async getDirContents(path: FilePath): Promise<[FileRes] | null>;
-	async getDirContents(path: DirectoryPath): Promise<FileOrFolderRes[] | null>;
 	async getDirContents(
-		path: FileOrDirectoryPath,
-	): Promise<FileOrFolderRes[] | null> {
-		const tempResult: FileOrFolderRes[] = [];
+		path: Readonly<FilePath>,
+	): Promise<[FileHostFile] | null>;
+	async getDirContents(
+		path: Readonly<DirectoryPath>,
+	): Promise<FileOrDirectory[] | null>;
+	async getDirContents(
+		path: Readonly<FileOrDirectoryPath>,
+	): Promise<FileOrDirectory[] | null> {
+		const tempResult: FileOrDirectory[] = [];
 		const parsedPath = convertPathToString(path);
 		const cachedResult = this._dirContentCache.get(parsedPath);
 
@@ -148,13 +173,13 @@ export abstract class FileHost {
 			const filePath = path as FilePath;
 			const possibleFile = await this.getFile(filePath);
 
-			if (possibleFile) return [{ type: "file", file: possibleFile }];
+			if (possibleFile) return [possibleFile];
 		}
 
 		if (await hfs.isDirectory(parsedPath)) {
 			/** For concurrently storing the promises */
 			const filePromises: Promise<FileHostFile | null>[] = [];
-			const dirEntries: FolderRes[] = [];
+			const dirEntries: FileOrDirectory[] = [];
 
 			for await (const entry of hfs.list(parsedPath)) {
 				const { isDirectory, isFile, name: _name } = entry;
@@ -165,7 +190,14 @@ export abstract class FileHost {
 					// Collect all getFile promises without awaiting them immediately
 					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
-					dirEntries.push({ name, type: "dir" });
+					dirEntries.push({
+						dateEdited: new Date(0),
+						fileCount: 0,
+						folderCount: 0,
+						name,
+						path: [...path, name] as DirectoryPath,
+						size: 0,
+					});
 				}
 			}
 
@@ -175,7 +207,7 @@ export abstract class FileHost {
 			// Process the results of the concurrent fetches
 			for (const result of fetchedFiles) {
 				if (result.status === "fulfilled" && result.value) {
-					tempResult.push({ file: result.value, type: "file" });
+					tempResult.push(result.value);
 				}
 			}
 			tempResult.push(...dirEntries); // Add the directory entries
@@ -186,6 +218,62 @@ export abstract class FileHost {
 		this._dirContentCache.set(parsedPath, actualResult);
 
 		return actualResult;
+	}
+
+	private _folderStatsCache = new QuickLRU<string, FolderStats>(
+		FileHost._cacheConfig,
+	);
+
+	async getFolderStats(directoryPath: DirectoryPath): Promise<FolderStats> {
+		const recursivelyGetFolderStats = async (
+			directoryPath: Readonly<DirectoryPath>,
+			accumulatedStats: FolderStats,
+		): Promise<FolderStats> => {
+			const directoryPathString = convertPathToString(directoryPath);
+			const cachedStats = this._folderStatsCache.get(directoryPathString);
+
+			if (cachedStats) return cachedStats;
+
+			const children = await this.getDirContents(directoryPath);
+
+			if (!children) return accumulatedStats;
+
+			for (const child of children) {
+				if (child instanceof FileHostFile) {
+					accumulatedStats.size += child.size;
+					accumulatedStats.fileCount++;
+					if (child.dateCreated > accumulatedStats.dateEdited) {
+						accumulatedStats.dateEdited = child.dateCreated;
+					}
+				} else {
+					accumulatedStats.folderCount++;
+					const childPath = [...directoryPath, child.name] as DirectoryPath;
+					const childStats = await recursivelyGetFolderStats(childPath, {
+						...accumulatedStats,
+						path: childPath,
+					});
+					accumulatedStats.size += childStats.size;
+					accumulatedStats.fileCount += childStats.fileCount;
+					accumulatedStats.folderCount += childStats.folderCount;
+					if (childStats.dateEdited > accumulatedStats.dateEdited) {
+						accumulatedStats.dateEdited = childStats.dateEdited;
+					}
+				}
+			}
+
+			this._folderStatsCache.set(directoryPathString, accumulatedStats);
+
+			return accumulatedStats;
+		};
+
+		return recursivelyGetFolderStats(directoryPath, {
+			dateEdited: new Date(0),
+			fileCount: 0,
+			folderCount: 0,
+			name: directoryPath[directoryPath.length - 1],
+			path: ROOT_PATH,
+			size: 0,
+		});
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
@@ -230,7 +318,7 @@ export abstract class FileHost {
 
 		return hfs.write(
 			convertPathToString(FileHost.root(this.id, true)),
-			JSON.stringify(this.export()),
+			stringify(this.export()),
 		);
 	}
 
@@ -264,8 +352,8 @@ export async function initFileHosts(): Promise<
 
 		if (name.endsWith(".bin") && isFile) {
 			const fileHostId = name as FileHostID;
-			const props: FileHostClassProps = await hfs.json(
-				convertPathToString(fileHostRoot(fileHostId)),
+			const props: FileHostClassProps = parse(
+				(await hfs.text(convertPathToString(fileHostRoot(fileHostId)))) ?? "",
 			);
 			const { type } = props;
 

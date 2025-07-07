@@ -2,10 +2,11 @@ import { createAsync } from "@solidjs/router";
 import { createMemo, Show, Suspense } from "solid-js";
 import {
 	FileHost,
-	type FileHostFile,
-	type FileHostImplementations,
+	FileHostFile,
+	type FileOrDirectoryOrFileHost,
 } from "~/classes/file-host";
 import { convertPathToString } from "~/declarations/functions";
+import LoadingSpinner from "../loading-spinner";
 import { GenericModal } from "./modal";
 
 type FileDetailsProps = {
@@ -19,7 +20,7 @@ type FileDetailsProps = {
 
 /** Displays the relevant data of a given `FileHostFile` of `FileHost` */
 export default function FileDetails(prop: {
-	file: FileHostFile | FileHostImplementations;
+	file: FileOrDirectoryOrFileHost;
 	modalId: string;
 }) {
 	/** To convert a number in bytes to kb, mb, gb */
@@ -33,25 +34,32 @@ export default function FileDetails(prop: {
 	};
 
 	const data = createMemo<Promise<FileDetailsProps>>(async () => {
-		const fileData = prop.file;
+		const data = prop.file;
 
-		if (fileData instanceof FileHost) {
+		if (data instanceof FileHost) {
 			return {
-				dateCreated: fileData.dateCreated,
-				name: fileData.name,
+				dateCreated: data.dateCreated,
+				name: data.name,
 				path: "/",
-				size: convertBytes(await fileData.spaceUsed()),
+				size: convertBytes(await data.spaceUsed()),
 				url: null,
 			};
-		}
-		// else if (fileData instanceof FileHostFile) {
-		else {
+		} else if (data instanceof FileHostFile) {
 			return {
-				dateCreated: fileData.dateCreated,
-				name: fileData.name(true),
-				path: convertPathToString(fileData.relativePath),
-				size: convertBytes(fileData.size),
-				url: fileData.url,
+				dateCreated: data.dateCreated,
+				name: data.name(true),
+				path: convertPathToString(data.relativePath),
+				size: convertBytes(data.size),
+				url: data.url,
+			};
+		} else {
+			return {
+				dateCreated: data.dateEdited,
+				name: data.name,
+				// TODO: add a central function for getting relative paths instead of this hacky workaround that may break if I change the logic in the future
+				path: convertPathToString(data.path.slice(2)),
+				size: convertBytes(data.size),
+				url: null,
 			};
 		}
 	});
@@ -63,7 +71,7 @@ export default function FileDetails(prop: {
 			<div class="flex flex-col gap-2">
 				<h2 class="text-lg font-semibold">File Details</h2>
 				<div class="flex flex-col gap-1">
-					<Suspense>
+					<Suspense fallback={<LoadingSpinner />}>
 						<Show when={displayedData()}>
 							{(val) => (
 								<>

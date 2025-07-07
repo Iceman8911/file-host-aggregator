@@ -23,8 +23,10 @@ import { createStore, produce, type SetStoreFunction } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
 	FileHost,
-	type FileHostFile,
+	FileHostFile,
 	type FileHostImplementations,
+	type FileOrDirectory,
+	type FileOrDirectoryOrFileHost,
 	FileType,
 } from "~/classes/file-host";
 import { quickSort } from "~/declarations/async-quick-sort";
@@ -32,6 +34,7 @@ import { generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type { DirectoryPath } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
+import LoadingSpinner from "./loading-spinner";
 import CustomContextMenu from "./menu/custom-context-menu";
 import FileDetails from "./modal/file-details";
 
@@ -58,15 +61,11 @@ type FileViewSettings = {
 	sorting: { param: "name" | "date" | "size" | "type"; order: "asc" | "desc" };
 };
 
-type FilesOrFileHosts =
-	| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })[]
+/** I hate that I actually wrote this >~< */
+type FilesOrDirectoriesOrFileHosts =
+	| FileOrDirectory[]
 	| FileHostImplementations[]
 	| null;
-
-type FileOrFolderOrFileHost =
-	| { type: "dir"; name: string }
-	| { type: "file"; file: FileHostFile }
-	| FileHostImplementations;
 
 export default function FileView() {
 	const defaultFileViewSettings: Readonly<FileViewSettings> = {
@@ -81,113 +80,112 @@ export default function FileView() {
 		defaultFileViewSettings,
 	);
 
-	const _fetchedFilesOrFileHosts = createMemo<Promise<FilesOrFileHosts>>(
-		async () => {
-			const fileHost = () => fileViewSettings.pathData.fileHost;
-			const relativePath = () => fileViewSettings.pathData.relativePath;
+	const _fetchedFilesOrFileHosts = createMemo<
+		Promise<FilesOrDirectoriesOrFileHosts>
+	>(async () => {
+		const fileHost = () => fileViewSettings.pathData.fileHost;
+		const relativePath = () => fileViewSettings.pathData.relativePath;
 
-			if (fileHost()) {
-				// Workaround for typescript to know that the function call isn't null
-				const fileHostVar = fileHost() as FileHostImplementations;
+		if (fileHost()) {
+			// Workaround for typescript to know that the function call isn't null
+			const fileHostVar = fileHost() as FileHostImplementations;
 
-				return fileHostVar.getDirContents(
-					[fileHostVar.root(), relativePath()].flat(),
-				);
-			}
+			return fileHostVar.getDirContents(
+				[fileHostVar.root(), relativePath()].flat(),
+			);
+		}
 
-			return Array.from(FileHost.collection.values());
-		},
-	);
+		return Array.from(FileHost.collection.values());
+	});
 
 	/** stuff like sorting */
-	const _processedFilesOrFileHosts = createMemo<Promise<FilesOrFileHosts>>(
-		async () => {
-			const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
-			if (!originalFilesOrFileHosts) return [];
+	const _processedFilesOrFileHosts = createMemo<
+		Promise<FilesOrDirectoriesOrFileHosts>
+	>(async () => {
+		const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
+		if (!originalFilesOrFileHosts) return [];
 
-			//@ts-expect-error Yeah, I messed up the types, but it works :D
-			const sorted: FilesOrFileHosts = await quickSort<
-				| ({ type: "dir"; name: string } | { type: "file"; file: FileHostFile })
-				| FileHostImplementations
-			>(originalFilesOrFileHosts, async (a, b) => {
-				const sortingData = fileViewSettings.sorting;
+		//@ts-expect-error Yeah, I messed up the types, but it works :D
+		const sorted: FilesOrDirectoriesOrFileHosts = await quickSort<
+			FileOrDirectory | FileHostImplementations
+		>(originalFilesOrFileHosts, async (a, b) => {
+			const sortingData = fileViewSettings.sorting;
 
-				switch (sortingData.param) {
-					case "name": {
-						const nameOfA =
-							a instanceof FileHost || a.type === "dir"
-								? a.name
-								: a.file.name(true);
-						const nameOfB =
-							b instanceof FileHost || b.type === "dir"
-								? b.name
-								: b.file.name(true);
+			switch (sortingData.param) {
+				case "name": {
+					const nameOfA =
+						a instanceof FileHost || !(a instanceof FileHostFile)
+							? a.name
+							: a.name(true);
+					const nameOfB =
+						b instanceof FileHost || !(b instanceof FileHostFile)
+							? b.name
+							: b.name(true);
 
-						return (
-							sortingData.order === "asc"
-								? nameOfA >= nameOfB
-								: nameOfA <= nameOfB
-						)
-							? 1
-							: -1;
-					}
-					// TODO: Add a way for obtaining folder dates.
-					case "date": {
-						const dateOfA =
-							a instanceof FileHost
-								? a.dateCreated.getTime()
-								: a.type === "file"
-									? a.file.dateCreated.getTime()
-									: Date.now();
-						const dateOfB =
-							b instanceof FileHost
-								? b.dateCreated.getTime()
-								: b.type === "file"
-									? b.file.dateCreated.getTime()
-									: Date.now();
-
-						return (
-							sortingData.order === "asc"
-								? dateOfA >= dateOfB
-								: dateOfA <= dateOfB
-						)
-							? 1
-							: -1;
-					}
-					case "size": {
-						const sizeOfA =
-							a instanceof FileHost
-								? await a.spaceUsed()
-								: a.type === "file"
-									? a.file.dateCreated.getTime()
-									: Date.now();
-						const sizeOfB =
-							b instanceof FileHost
-								? b.dateCreated.getTime()
-								: b.type === "file"
-									? b.file.dateCreated.getTime()
-									: Date.now();
-
-						return (
-							sortingData.order === "asc"
-								? sizeOfA >= sizeOfB
-								: sizeOfA <= sizeOfB
-						)
-							? 1
-							: -1;
-					}
-					// TODO:
-					case "type":
-						return 0;
-					default:
-						return 0;
+					return (
+						sortingData.order === "asc"
+							? nameOfA >= nameOfB
+							: nameOfA <= nameOfB
+					)
+						? 1
+						: -1;
 				}
-			});
+				// TODO: Add a way for obtaining folder dates.
+				case "date": {
+					const dateOfA =
+						a instanceof FileHost
+							? a.dateCreated.getTime()
+							: a instanceof FileHostFile
+								? a.dateCreated.getTime()
+								: a.dateEdited.getTime();
+					const dateOfB =
+						b instanceof FileHost
+							? b.dateCreated.getTime()
+							: b instanceof FileHostFile
+								? b.dateCreated.getTime()
+								: b.dateEdited.getTime();
 
-			const result = sorted;
-			return result;
-		},
-	);
+					return (
+						sortingData.order === "asc"
+							? dateOfA >= dateOfB
+							: dateOfA <= dateOfB
+					)
+						? 1
+						: -1;
+				}
+				case "size": {
+					const sizeOfA =
+						a instanceof FileHost
+							? await a.spaceUsed()
+							: a instanceof FileHostFile
+								? a.dateCreated.getTime()
+								: Date.now();
+					const sizeOfB =
+						b instanceof FileHost
+							? b.dateCreated.getTime()
+							: b instanceof FileHostFile
+								? b.dateCreated.getTime()
+								: Date.now();
+
+					return (
+						sortingData.order === "asc"
+							? sizeOfA >= sizeOfB
+							: sizeOfA <= sizeOfB
+					)
+						? 1
+						: -1;
+				}
+				// TODO:
+				case "type":
+					return 0;
+				default:
+					return 0;
+			}
+		});
+
+		const result = sorted;
+		return result;
+	});
 
 	const displayedFilesOrFileHosts = createAsync(() =>
 		_processedFilesOrFileHosts(),
@@ -209,13 +207,7 @@ export default function FileView() {
 
 			{/* Folder/File view */}
 			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense
-					fallback={
-						<div class="size-full flex items-center justify-center">
-							<span class="loading loading-spinner loading-xl text-primary scale-200"></span>
-						</div>
-					}
-				>
+				<Suspense fallback={<LoadingSpinner />}>
 					<ListOfFilesAndFoldersAndFileHosts
 						list={displayedFilesOrFileHosts()}
 						settingsSetter={setFileViewSettings}
@@ -357,24 +349,26 @@ function UtilityIcons(prop: {
 }
 
 function ListOfFilesAndFoldersAndFileHosts(prop: {
-	list: FilesOrFileHosts | undefined;
+	list: FilesOrDirectoriesOrFileHosts | undefined;
 	settingsSetter: SetStoreFunction<FileViewSettings>;
 }) {
 	type FileDetailsDialogData = {
-		data: FileHostImplementations | FileHostFile | null;
+		data: FileOrDirectoryOrFileHost | null;
 		modalId: string;
 	};
 
 	const [fileDetailsDialogData, setFileDetailsDialogData] =
 		createStore<FileDetailsDialogData>({ data: null, modalId: generateUUID() });
 
-	const handleOpenFileOrDirectoryOrFileHost = (val: FileOrFolderOrFileHost) => {
+	const handleOpenFileOrDirectoryOrFileHost = (
+		val: FileOrDirectoryOrFileHost,
+	) => {
 		prop.settingsSetter(
 			produce((state) => {
 				if (val instanceof FileHost) {
 					state.pathData.fileHost = val;
 					state.pathData.relativePath = ROOT_PATH;
-				} else if (val.type === "dir") {
+				} else if (!(val instanceof FileHostFile)) {
 					state.pathData.relativePath = [
 						state.pathData.relativePath,
 						val.name,
@@ -384,10 +378,12 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	};
 
-	const handleShowFileDetails = (file: FileHostFile) => {
+	const handleShowFileOrFolderOrFileHostDetails = (
+		data: FileOrDirectoryOrFileHost,
+	) => {
 		setFileDetailsDialogData(
 			produce((state) => {
-				state.data = file;
+				state.data = data;
 			}),
 		);
 		(
@@ -397,13 +393,14 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		)?.showModal();
 	};
 
-	function ContextMenu(prop: { data: FileOrFolderOrFileHost }) {
+	function ContextMenu(prop: { data: FileOrDirectoryOrFileHost }) {
 		return (
 			<>
 				<Switch>
 					<Match
 						when={
-							(prop.data instanceof FileHost || prop.data.type === "dir") &&
+							(prop.data instanceof FileHost ||
+								!(prop.data instanceof FileHostFile)) &&
 							prop.data
 						}
 					>
@@ -447,9 +444,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					<button
 						type="button"
 						onClick={() => {
-							if (prop.data.type === "file") {
-								handleShowFileDetails(prop.data.file);
-							}
+							handleShowFileOrFolderOrFileHostDetails(prop.data);
 						}}
 					>
 						<InfoIcon />
@@ -460,7 +455,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	}
 
-	function Thumbnail(prop: { data: FileOrFolderOrFileHost }) {
+	function Thumbnail(prop: { data: FileOrDirectoryOrFileHost }) {
 		return (
 			<Switch>
 				<Match when={prop.data instanceof FileHost && prop.data}>
@@ -475,11 +470,16 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					)}
 				</Match>
 
-				<Match when={prop.data.type === "dir"}>
+				<Match
+					when={
+						!(prop.data instanceof FileHost) &&
+						!(prop.data instanceof FileHostFile)
+					}
+				>
 					<DefaultFolderIcon />
 				</Match>
 
-				<Match when={prop.data.type === "file" && prop.data.file}>
+				<Match when={prop.data instanceof FileHostFile && prop.data}>
 					{(file) => (
 						<Switch fallback={<UnknownFileIcon />}>
 							<Match when={file().type === FileType.ARCHIVE}>
@@ -516,7 +516,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		<>
 			<For each={prop.list}>
 				{(val) => {
-					const name = val.type === "file" ? val.file.name(true) : val.name;
+					const name = val instanceof FileHostFile ? val.name(true) : val.name;
 
 					return (
 						<CustomContextMenu
