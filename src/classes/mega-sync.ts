@@ -255,5 +255,7 @@ export class MegaSyncFileHost extends FileHost {
 				await hfs.delete(convertPathToString(file.path));
 			}
 		}
+
+		this.clearDirContentCache();
 	}
 }

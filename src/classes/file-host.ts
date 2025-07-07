@@ -120,13 +120,15 @@ export abstract class FileHost {
 	}
 
 	/** Caches the results of `.getDirContents()` */
-	private static _dirContentCache = new QuickLRU<
-		string,
-		FileOrFolderRes[] | null
-	>({
+	private _dirContentCache = new QuickLRU<string, FileOrFolderRes[] | null>({
 		maxSize: 100,
 		maxAge: 300000,
 	});
+
+	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
+	clearDirContentCache() {
+		this._dirContentCache.clear();
+	}
 
 	/**
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
@@ -138,7 +140,7 @@ export abstract class FileHost {
 	): Promise<FileOrFolderRes[] | null> {
 		const tempResult: FileOrFolderRes[] = [];
 		const parsedPath = convertPathToString(path);
-		const cachedResult = FileHost._dirContentCache.get(parsedPath);
+		const cachedResult = this._dirContentCache.get(parsedPath);
 
 		if (cachedResult !== undefined) return cachedResult;
 
@@ -181,7 +183,7 @@ export abstract class FileHost {
 
 		const actualResult = tempResult.length ? tempResult : null;
 
-		FileHost._dirContentCache.set(parsedPath, actualResult);
+		this._dirContentCache.set(parsedPath, actualResult);
 
 		return actualResult;
 	}
