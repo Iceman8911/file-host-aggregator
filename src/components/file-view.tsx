@@ -512,6 +512,47 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	}
 
+	function SpaceUsedPercentageRadialBar(prop: {
+		data: FileOrDirectoryOrFileHost;
+	}) {
+		return (
+			<Show when={prop.data instanceof FileHost && prop.data}>
+				{(val) => {
+					const resolvedValues = createAsync(async () => {
+						return {
+							spaceUsed: await val().spaceUsed(),
+							spaceTotal: await val().spaceTotal(),
+						};
+					});
+
+					return (
+						<Suspense>
+							<Show when={resolvedValues()}>
+								{(val) => {
+									const percentageUsed = (
+										(val().spaceUsed / val().spaceTotal) *
+										100
+									).toFixed(2);
+
+									return (
+										<div
+											class="radial-progress text-info mt-0.5"
+											style={`--value:${percentageUsed};`}
+											aria-valuenow={percentageUsed}
+											role="progressbar"
+										>
+											{percentageUsed}%
+										</div>
+									);
+								}}
+							</Show>
+						</Suspense>
+					);
+				}}
+			</Show>
+		);
+	}
+
 	return (
 		<>
 			<For each={prop.list}>
@@ -536,6 +577,8 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
 									{name}
 								</p>
+
+								<SpaceUsedPercentageRadialBar data={val} />
 							</button>
 						</CustomContextMenu>
 					);
