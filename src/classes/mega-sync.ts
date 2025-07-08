@@ -9,6 +9,7 @@ import {
 import type {
 	ClassPropsOnly,
 	DirectoryPath,
+	ExtractValueTypeFromPromise,
 	FileName,
 	FilePath,
 	ResultType,
@@ -19,8 +20,17 @@ import { FileHost, FileHostFile } from "./file-host";
 const { Storage: MegaSyncStorage, File: MegaFile } = await import("megajs");
 const USER_AGENT = "FileHostAggregator/0.1";
 
+type AccountInfo = ExtractValueTypeFromPromise<
+	ReturnType<typeof MegaSyncStorage.prototype.getAccountInfo>
+>;
+
 export class MegaSyncFileHost extends FileHost {
 	type = gFileHosts.MEGA;
+
+	/** Minimum time in milliseconds before the caches are refreshed */
+	private static readonly _refreshCacheIn = 30000;
+	private _accountInfoCache: { info: AccountInfo; cachedOn: Date } | null =
+		null;
 
 	constructor(
 		public name: string,
@@ -32,8 +42,9 @@ export class MegaSyncFileHost extends FileHost {
 	}
 
 	export() {
-		const { id, dateCreated, name, email, password, type } = this;
-		return { id, dateCreated, name, email, password, type };
+		const { _accountInfoCache, id, dateCreated, name, email, password, type } =
+			this;
+		return { _accountInfoCache, id, dateCreated, name, email, password, type };
 	}
 
 	/** @throws if a stable internet connection cannot be established */
@@ -273,7 +284,24 @@ export class MegaSyncFileHost extends FileHost {
 	}
 
 	private async _getAccountInfo() {
-		return (await this._getStorage()).getAccountInfo();
+		const { _accountInfoCache: accountInfo } = this;
+		// If the cache is not empty, is still valid (or there is no stable internet connection), return the cached info
+		if (
+			accountInfo &&
+			(Date.now() - accountInfo.cachedOn.getTime() <
+				MegaSyncFileHost._refreshCacheIn ||
+				!(await gIsUserConnectedToInternet()))
+		)
+			return accountInfo.info;
+
+		this._accountInfoCache = {
+			cachedOn: new Date(),
+			info: await (await this._getStorage()).getAccountInfo(),
+		};
+
+		this.save();
+
+		return this._accountInfoCache.info;
 	}
 
 	async spaceTotal(): Promise<number> {

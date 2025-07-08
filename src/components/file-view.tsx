@@ -526,7 +526,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					});
 
 					return (
-						<Suspense>
+						<Suspense fallback={<LoadingSpinner />}>
 							<Show when={resolvedValues()}>
 								{(val) => {
 									const percentageUsed = (
@@ -536,7 +536,8 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 
 									return (
 										<div
-											class="radial-progress text-info mt-0.5"
+											// When the parent button is hover over, the radial bar will change color to still be legible
+											class="radial-progress text-secondary mt-0.5 group-hover:text-secondary-content"
 											style={`--value:${percentageUsed};`}
 											aria-valuenow={percentageUsed}
 											role="progressbar"
@@ -566,7 +567,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 						>
 							<button
 								type="button"
-								class="relative flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+								class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
 								title={name}
 								onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
 							>

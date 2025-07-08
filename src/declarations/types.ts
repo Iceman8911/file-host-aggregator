@@ -8,7 +8,11 @@ export type ResultType<TResult> =
 /** For getting all non-method properties of a class */
 export type ClassPropsOnly<T> = {
 	[K in keyof T as T[K] extends Function ? never : K]: T[K];
-}; // Regular Types
+};
+export type ExtractValueTypeFromPromise<TPromise extends Promise<unknown>> =
+	TPromise extends Promise<infer TValue> ? TValue : never;
+
+// Regular Types
 /** Represents the path of a file from it's root (file host).
  *
  * Use `join("/")` to get the actual path: `""` */
