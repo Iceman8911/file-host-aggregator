@@ -492,10 +492,13 @@ export class FileHostFile {
 	readonly url: URL;
 	/** image string, could be a url, or raw base64 data */
 	private _thumbnail: string | null = null;
-	private _file: Blob | null = null;
+	private _file: { data: Blob; cachedOn: Date } | null = null;
 	/** Cache for the file's mimetype  */
 	private _mimeType: string | null = null;
 	private _fileHostId: FileHostID;
+
+	/** In milliseconds */
+	private static readonly _cacheDuration = 300000;
 
 	constructor(args: {
 		name: string;
@@ -522,7 +525,7 @@ export class FileHostFile {
 		this._ext = ext;
 		this.url = new URL(fileUrl);
 		this._fileHostId = fileHostId;
-		this._file = fileData ?? null;
+		this._file = fileData ? { cachedOn: new Date(), data: fileData } : null;
 		this.dateCreated = dateCreated ?? new Date();
 		this.size = size ?? 0;
 
@@ -586,7 +589,13 @@ export class FileHostFile {
 		/** If true, the file is always fetched from the file host */
 		forceDownload = false,
 	): Promise<Blob> {
-		if (this._file && !forceDownload) return this._file;
+		if (
+			this._file &&
+			this._file.cachedOn.getTime() + FileHostFile._cacheDuration <
+				Date.now() &&
+			!forceDownload
+		)
+			return this._file.data;
 		else {
 			const fileHost = this.fileHost;
 
@@ -599,7 +608,7 @@ export class FileHostFile {
 						throw Error(`Failed to fetch file from ${fileHost.name}`);
 
 					const { result } = res;
-					this._file = result;
+					this._file = { cachedOn: new Date(), data: result };
 					this.size = result.size;
 					this.saveToDisk();
 					return result;
@@ -609,7 +618,7 @@ export class FileHostFile {
 			} catch {
 				const blob = await (await fetch(this.url)).blob();
 				const file = new File([blob], this.name(true));
-				this._file = file;
+				this._file = { cachedOn: new Date(), data: file };
 				this.size = file.size;
 				this.saveToDisk();
 
@@ -649,7 +658,7 @@ export class FileHostFile {
 		const { _file, _ext } = this;
 		const { mime } = await import("./mime");
 		const mimeType =
-			_file?.type ?? mime.getType(_ext) ?? "application/octet-stream";
+			_file?.data.type ?? mime.getType(_ext) ?? "application/octet-stream";
 
 		this._mimeType = mimeType;
 		// console.log(mimeType)
@@ -663,26 +672,25 @@ export class FileHostFile {
 
 	// TODO: Add string compression. Maybe we can apply it conditionally depending on the blob size
 	static async serialize(instance: FileHostFile) {
-		const shouldSerializeAsync = !!Object.values(instance).find(
-			(val: unknown) => {
-				return val instanceof Blob;
-			},
-		);
+		const shouldSerializeAsync = (instance: object): boolean => {
+			for (const val of Object.values(instance)) {
+				if (val instanceof Blob) {
+					return true;
+				} else if (typeof val === "object" && val != null) {
+					if (shouldSerializeAsync(val as object)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		};
 
-		return shouldSerializeAsync
+		return shouldSerializeAsync(instance)
 			? stringifyAsync(instance)
 			: stringify(instance);
 	}
 
 	async saveToDisk() {
-		// console.log(
-		// 	"The Path of ",
-		// 	this.name(true),
-		// 	"is:",
-		// 	this.path,
-		// 	"\n As for if it has a parent, you can find it in:",
-		// 	{ ...this.fileHost },
-		// );
 		return hfs.write(
 			convertPathToString(this.path),
 			await FileHostFile.serialize(this),
