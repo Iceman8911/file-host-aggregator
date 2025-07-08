@@ -426,14 +426,16 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					</Match>
 
 					<Match when={prop.data instanceof FileHostFile && prop.data}>
-						{(_) => (
-							<li>
-								<button type="button">
-									<DefaultFileIcon />
-									View
-								</button>
-							</li>
-						)}
+						{(file) => {
+							return (
+								<li>
+									<button type="button" onClick={(_) => file().getFile()}>
+										<DefaultFileIcon />
+										View
+									</button>
+								</li>
+							);
+						}}
 					</Match>
 				</Switch>
 				<li>
