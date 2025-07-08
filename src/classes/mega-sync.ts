@@ -8,10 +8,10 @@ import {
 } from "~/declarations/functions";
 import type {
 	ClassPropsOnly,
-	DirectoryPath,
 	ExtractValueTypeFromPromise,
 	FileName,
-	FilePath,
+	RelativeDirectoryPath,
+	RelativeFilePath,
 	ResultType,
 } from "~/declarations/types";
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
@@ -113,13 +113,13 @@ export class MegaSyncFileHost extends FileHost {
 
 	/** Returns the folder at the specified path on the **server** while auto-creating missing folders if needed */
 	private async _getFolder(
-		path: DirectoryPath,
+		path: RelativeDirectoryPath,
 		folderToStartFrom = this._storage?.root,
 	): Promise<MutableFile> {
 		if (!folderToStartFrom) throw Error("MEGA storage not initialized");
 		if (!path.length) return folderToStartFrom;
 		const directoryToFindOrCreate = path[0];
-		const restOfDirectoryPath: DirectoryPath = path.slice(1);
+		const restOfDirectoryPath: RelativeDirectoryPath = path.slice(1);
 
 		const createdOrFoundDirectory =
 			folderToStartFrom.find(directoryToFindOrCreate) ??
@@ -130,7 +130,7 @@ export class MegaSyncFileHost extends FileHost {
 
 	async uploadFile(
 		file: Blob,
-		path: DirectoryPath,
+		path: RelativeDirectoryPath,
 		name: FileName,
 	): Promise<ResultType<URL>> {
 		try {
@@ -207,12 +207,15 @@ export class MegaSyncFileHost extends FileHost {
 					size: ref.size,
 				});
 			} else {
-				type FileAndPath = { file: MutableFile; relativePath: DirectoryPath };
+				type FileAndPath = {
+					file: MutableFile;
+					relativePath: RelativeDirectoryPath;
+				};
 
 				// Recursively loop through it's children until we find the files.
 				const searchForNestedFiles = (
 					possibleDirectory: MutableFile,
-					pathAccumulator: DirectoryPath,
+					pathAccumulator: RelativeDirectoryPath,
 					foundFiles: Array<FileAndPath> = [],
 				): ReadonlyArray<FileAndPath> => {
 					if (!possibleDirectory.directory) {
@@ -280,7 +283,7 @@ export class MegaSyncFileHost extends FileHost {
 		}
 
 		this.clearDirContentCache();
-		this.clearFolderStatsCache();
+		this.clearDirectoryStatsCache();
 	}
 
 	private async _getAccountInfo() {
@@ -312,7 +315,10 @@ export class MegaSyncFileHost extends FileHost {
 		return (await this._getAccountInfo()).spaceUsed;
 	}
 
-	async deleteFile(file: FilePath, permanent = false): Promise<boolean> {
+	async deleteFile(
+		file: RelativeFilePath,
+		permanent = false,
+	): Promise<boolean> {
 		const { _storage } = this;
 		if (!_storage) throw Error("MEGA storage not initialized");
 
@@ -321,7 +327,7 @@ export class MegaSyncFileHost extends FileHost {
 
 		await fileToDelete.delete(permanent);
 		this.clearDirContentCache();
-		this.clearFolderStatsCache();
+		this.clearDirectoryStatsCache();
 
 		return true;
 	}

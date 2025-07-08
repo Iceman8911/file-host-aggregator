@@ -1,4 +1,4 @@
-import type { FileOrDirectoryPath } from "./types";
+import type { AnyFileOrDirectoryPath } from "./types";
 
 export const generateUUID = <
 	TReturnType = ReturnType<typeof crypto.randomUUID>,
@@ -24,8 +24,8 @@ export async function gThrowIfNoInternet(): Promise<void> {
 }
 
 // For paths
-const pathCache = new WeakMap<FileOrDirectoryPath, string>();
-export function convertPathToString(path: Readonly<FileOrDirectoryPath>) {
+const pathCache = new WeakMap<Readonly<AnyFileOrDirectoryPath>, string>();
+export function convertPathToString(path: Readonly<AnyFileOrDirectoryPath>) {
 	return (
 		pathCache.get(path) ?? pathCache.set(path, path.join("/")).get(path) ?? ""
 	);

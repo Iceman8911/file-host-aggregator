@@ -5,17 +5,22 @@ import {
 	stringify,
 	stringifyAsync,
 } from "@worker-tools/structured-json";
-import { signalify } from "classy-solid";
+
 import QuickLRU from "quick-lru";
 import { gFileHosts } from "~/declarations/enums";
 import { convertPathToString, generateUUID } from "~/declarations/functions";
 import type {
+	AbsoluteDirectoryPath,
+	AbsoluteFileOrDirectoryPath,
+	AbsoluteFilePath,
+	AnyDirectoryPath,
+	AnyFilePath,
 	Brand,
-	ClassPropsOnly,
-	DirectoryPath,
+	DirectoryName,
 	FileName,
-	FileOrDirectoryPath,
-	FilePath,
+	RelativeDirectoryPath,
+	RelativeFileOrDirectoryPath,
+	RelativeFilePath,
 	ResultType,
 	UUID,
 } from "~/declarations/types";
@@ -26,7 +31,7 @@ export type FileHostID = Brand<UUID, "FileHostID">;
 export type FileHostImplementations = MegaSyncFileHost;
 export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 
-export type FolderStats = {
+export type DirectoryStats = {
 	/** In bytes */
 	size: number;
 	/** The value of this is the same as the creation date of it's most recent descendant file or folder (recursive) */
@@ -36,17 +41,17 @@ export type FolderStats = {
 	/** Number of descendant folders */
 	folderCount: number;
 	/** The path to the folder */
-	path: DirectoryPath;
+	path: AbsoluteDirectoryPath;
 	/** The name of the folder */
-	name: string;
+	name: DirectoryName;
 };
 
 export type FileOrDirectoryOrFileHost =
 	| FileHostFile
 	| FileHostImplementations
-	| FolderStats;
+	| DirectoryStats;
 
-export type FileOrDirectory = FileHostFile | FolderStats;
+export type FileOrDirectory = FileHostFile | DirectoryStats;
 
 const FILE_HOST = "file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
@@ -75,17 +80,43 @@ export abstract class FileHost {
 	 *
 	 * Make sure that the instance is properly initialized before fetching files.
 	 */
-	static init(...args: unknown[]): Promise<FileHostImplementations> {
+	static init(): Promise<FileHostImplementations> {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
-	protected static _getRelativePathFromFilePath(filePath: FilePath): FilePath {
-		return filePath[0] === FILE_HOST ? filePath.slice(2) : filePath;
+	protected static _getRelativePathFromAbsolutePath(
+		filePath: AbsoluteDirectoryPath,
+	): RelativeDirectoryPath;
+	protected static _getRelativePathFromAbsolutePath(
+		filePath: AbsoluteFilePath,
+	): RelativeFilePath;
+	protected static _getRelativePathFromAbsolutePath(
+		filePath: AbsoluteFileOrDirectoryPath,
+	): RelativeFileOrDirectoryPath {
+		return filePath.slice(2);
+	}
+
+	protected _getAbsolutePathFromRelativePath(
+		filePath: AbsoluteDirectoryPath,
+	): RelativeDirectoryPath;
+	protected _getAbsolutePathFromRelativePath(
+		filePath: AbsoluteFilePath,
+	): RelativeFilePath;
+	protected _getAbsolutePathFromRelativePath(
+		filePath: AbsoluteFileOrDirectoryPath,
+	): RelativeFileOrDirectoryPath {
+		return [this.root(), filePath].flat();
 	}
 
 	protected static _getDirectoryFromFilePath(
-		filePath: FilePath,
-	): DirectoryPath {
+		filePath: AbsoluteFilePath,
+	): AbsoluteDirectoryPath;
+	protected static _getDirectoryFromFilePath(
+		filePath: RelativeFilePath,
+	): RelativeDirectoryPath;
+	protected static _getDirectoryFromFilePath(
+		filePath: AnyFilePath,
+	): AnyDirectoryPath {
 		/** Get the directory from the file path */
 		return filePath.slice(0, -1);
 	}
@@ -113,7 +144,7 @@ export abstract class FileHost {
 	 */
 	abstract uploadFile(
 		file: Blob,
-		path: DirectoryPath,
+		path: RelativeDirectoryPath,
 		/** In case the file's name should be overwritten */
 		name: string,
 	): Promise<ResultType<URL>>;
@@ -122,14 +153,17 @@ export abstract class FileHost {
 	 *
 	 * Returns `true` if the file was successfully deleted, `false` otherwise.
 	 */
-	abstract deleteFile(file: FilePath, permanent?: true): Promise<boolean>;
+	abstract deleteFile(
+		file: RelativeFilePath,
+		permanent?: true,
+	): Promise<boolean>;
 
 	/** Attempts to delete a folder, and it's content recursively, from the file host, either permanently or just to the file host's "trash"
 	 *
 	 * Returns `true` if the folder was successfully deleted, `false` otherwise.
 	 */
 	abstract deleteDirectory(
-		directory: DirectoryPath,
+		directory: RelativeDirectoryPath,
 		permanent?: true,
 	): Promise<boolean>;
 
@@ -137,12 +171,12 @@ export abstract class FileHost {
 	abstract trimOutdatedCache(): Promise<void>;
 
 	/** Checks if the file exists as a local copy */
-	async hasFile(path: FilePath): Promise<boolean> {
+	async hasFile(path: AbsoluteFilePath): Promise<boolean> {
 		return hfs.isFile(convertPathToString(path));
 	}
 
 	/** Retrieves the local copy of the file at the path given, if any */
-	async getFile(path: FilePath): Promise<FileHostFile | null> {
+	async getFile(path: AbsoluteFilePath): Promise<FileHostFile | null> {
 		const parsedPath = convertPathToString(path);
 		if (!(await hfs.isFile(parsedPath))) return null;
 
@@ -164,7 +198,9 @@ export abstract class FileHost {
 			entryFilter: (entry) => entry.isFile,
 		})) {
 			filePromises.push(
-				this.getFile([this.root(), entry.path.split("/")].flat() as FilePath),
+				this.getFile(
+					[this.root(), entry.path.split("/")].flat() as AbsoluteFilePath,
+				),
 			);
 		}
 
@@ -185,13 +221,13 @@ export abstract class FileHost {
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(
-		path: Readonly<FilePath>,
+		path: Readonly<AbsoluteFilePath>,
 	): Promise<[FileHostFile] | null>;
 	async getDirContents(
-		path: Readonly<DirectoryPath>,
+		path: Readonly<AbsoluteDirectoryPath>,
 	): Promise<FileOrDirectory[] | null>;
 	async getDirContents(
-		path: Readonly<FileOrDirectoryPath>,
+		path: Readonly<AbsoluteFileOrDirectoryPath>,
 	): Promise<FileOrDirectory[] | null> {
 		const tempResult: FileOrDirectory[] = [];
 		const parsedPath = convertPathToString(path);
@@ -200,7 +236,7 @@ export abstract class FileHost {
 		if (cachedResult !== undefined) return cachedResult;
 
 		if (await hfs.isFile(parsedPath)) {
-			const filePath = path as FilePath;
+			const filePath = path as AbsoluteFilePath;
 			const possibleFile = await this.getFile(filePath);
 
 			if (possibleFile) return [possibleFile];
@@ -216,12 +252,15 @@ export abstract class FileHost {
 				const name = _name as FileName;
 
 				if (isFile) {
-					const filePath = [...path, name] as FilePath;
+					const filePath = [...path, name] as AbsoluteFilePath;
 					// Collect all getFile promises without awaiting them immediately
 					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
 					dirEntries.push(
-						await this.getFolderStats([...path, name] as DirectoryPath),
+						await this.getDirectoryStats([
+							...path,
+							name,
+						] as AbsoluteDirectoryPath),
 					);
 				}
 			}
@@ -245,22 +284,25 @@ export abstract class FileHost {
 		return actualResult;
 	}
 
-	private _folderStatsCache = new QuickLRU<string, FolderStats>(
+	private _directoryStatsCache = new QuickLRU<string, DirectoryStats>(
 		FileHost._cacheConfig,
 	);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	clearFolderStatsCache() {
-		this._folderStatsCache.clear();
+	clearDirectoryStatsCache() {
+		this._directoryStatsCache.clear();
 	}
 
-	async getFolderStats(directoryPath: DirectoryPath): Promise<FolderStats> {
-		const recursivelyGetFolderStats = async (
-			directoryPath: Readonly<DirectoryPath>,
-			accumulatedStats: FolderStats,
-		): Promise<FolderStats> => {
+	/** Returns some metadata about a directory, since they aren't their own classes */
+	async getDirectoryStats(
+		directoryPath: AbsoluteDirectoryPath,
+	): Promise<DirectoryStats> {
+		const recursivelyGetDirectoryStats = async (
+			directoryPath: Readonly<AbsoluteDirectoryPath>,
+			accumulatedStats: DirectoryStats,
+		): Promise<DirectoryStats> => {
 			const directoryPathString = convertPathToString(directoryPath);
-			const cachedStats = this._folderStatsCache.get(directoryPathString);
+			const cachedStats = this._directoryStatsCache.get(directoryPathString);
 
 			if (cachedStats) return cachedStats;
 
@@ -277,9 +319,12 @@ export abstract class FileHost {
 					}
 				} else {
 					accumulatedStats.folderCount++;
-					const childPath = [...directoryPath, child.name] as DirectoryPath;
+					const childPath: AbsoluteDirectoryPath = [
+						...directoryPath,
+						child.name,
+					];
 					accumulatedStats.path = [...directoryPath];
-					const childStats = await recursivelyGetFolderStats(childPath, {
+					const childStats = await recursivelyGetDirectoryStats(childPath, {
 						...accumulatedStats,
 						path: childPath,
 					});
@@ -292,12 +337,12 @@ export abstract class FileHost {
 				}
 			}
 
-			this._folderStatsCache.set(directoryPathString, accumulatedStats);
+			this._directoryStatsCache.set(directoryPathString, accumulatedStats);
 
 			return accumulatedStats;
 		};
 
-		return recursivelyGetFolderStats(directoryPath, {
+		return recursivelyGetDirectoryStats(directoryPath, {
 			dateEdited: new Date(0),
 			fileCount: 0,
 			folderCount: 0,
@@ -309,7 +354,7 @@ export abstract class FileHost {
 
 	clearAllCaches() {
 		this.clearDirContentCache();
-		this.clearFolderStatsCache();
+		this.clearDirectoryStatsCache();
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
@@ -436,7 +481,7 @@ export class FileHostFile {
 	/** The extension of the file, e.g `webp`, `7z`, etc */
 	private _ext: string;
 	/** Absolute path from the root of the OPFS */
-	readonly path: FilePath;
+	readonly path: AbsoluteFilePath;
 	readonly dateCreated: Date;
 	/** In bytes */
 	size: number;
@@ -452,7 +497,7 @@ export class FileHostFile {
 
 	constructor(args: {
 		name: string;
-		relativePath: DirectoryPath;
+		relativePath: RelativeDirectoryPath;
 		fileUrl: URL | string;
 		fileHostId: FileHostID;
 		dateCreated?: Date;
@@ -479,8 +524,11 @@ export class FileHostFile {
 		this.dateCreated = dateCreated ?? new Date();
 		this.size = size ?? 0;
 
+		// This works, it's just typescript being angry
 		this.path = [
+			//@ts-expect-error
 			...(this.fileHost?.root() ?? []),
+			//@ts-expect-error
 			...relativePath,
 			this.name(true),
 		];
@@ -494,12 +542,12 @@ export class FileHostFile {
 	}
 
 	/** The file's path relative to it's file host */
-	get relativePath(): FilePath {
+	get relativePath(): RelativeFilePath {
 		const fileHostSet = new Set<string>(this.fileHost?.root() ?? []);
 
 		return this.path.filter(
 			(pathFragment) => !fileHostSet.has(pathFragment),
-		) as FilePath;
+		) as RelativeFilePath;
 	}
 
 	// If the actual thumbnail for the file cannot be obtained, fall back to default placeholders

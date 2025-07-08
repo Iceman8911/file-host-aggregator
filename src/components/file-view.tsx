@@ -32,7 +32,10 @@ import {
 import { quickSort } from "~/declarations/async-quick-sort";
 import { generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
-import type { DirectoryPath } from "~/declarations/types";
+import type {
+	AbsoluteDirectoryPath,
+	RelativeDirectoryPath,
+} from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
 import CustomContextMenu from "./menu/custom-context-menu";
@@ -46,7 +49,7 @@ type FilePathTracker = {
 	 *
 	 * **Don't forget to combine both values, when using the path**
 	 */
-	relativePath: DirectoryPath;
+	relativePath: RelativeDirectoryPath;
 };
 
 type FileViewSettings = {
@@ -91,7 +94,7 @@ export default function FileView() {
 			const fileHostVar = fileHost() as FileHostImplementations;
 
 			return fileHostVar.getDirContents(
-				[fileHostVar.root(), relativePath()].flat(),
+				[fileHostVar.root(), relativePath()].flat() as AbsoluteDirectoryPath,
 			);
 		}
 
