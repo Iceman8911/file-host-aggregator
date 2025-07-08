@@ -69,7 +69,7 @@ export default function FileDetails(prop: {
 	return (
 		<GenericModal modalId={prop.modalId}>
 			<div class="flex flex-col gap-2">
-				<h2 class="text-lg font-semibold">File Details</h2>
+				<h2 class="text-lg font-semibold">Details</h2>
 				<div class="flex flex-col gap-1">
 					<Suspense fallback={<LoadingSpinner />}>
 						<Show when={displayedData()}>
