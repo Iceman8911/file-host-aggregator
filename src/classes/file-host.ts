@@ -79,6 +79,17 @@ export abstract class FileHost {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
+	protected static _getRelativePathFromFilePath(filePath: FilePath): FilePath {
+		return filePath[0] === FILE_HOST ? filePath.slice(2) : filePath;
+	}
+
+	protected static _getDirectoryFromFilePath(
+		filePath: FilePath,
+	): DirectoryPath {
+		/** Get the directory from the file path */
+		return filePath.slice(0, -1);
+	}
+
 	/** Deletes the file host from the disk and memory. */
 	async deleteInstance(): Promise<void> {
 		await hfs.delete(convertPathToString(this.root()));
@@ -107,8 +118,20 @@ export abstract class FileHost {
 		name: string,
 	): Promise<ResultType<URL>>;
 
-	/** Attempts to delete a file from the file host */
-	abstract deleteFile(file: FilePath): ResultType<never>;
+	/** Attempts to delete a file from the file host, either permanently or just to the file host's "trash"
+	 *
+	 * Returns `true` if the file was successfully deleted, `false` otherwise.
+	 */
+	abstract deleteFile(file: FilePath, permanent?: true): Promise<boolean>;
+
+	/** Attempts to delete a folder, and it's content recursively, from the file host, either permanently or just to the file host's "trash"
+	 *
+	 * Returns `true` if the folder was successfully deleted, `false` otherwise.
+	 */
+	abstract deleteDirectory(
+		directory: DirectoryPath,
+		permanent?: true,
+	): Promise<boolean>;
 
 	/** Get's rid of non-existent files (i.e you deleted a file on the file host but it still exists on the client) */
 	abstract trimOutdatedCache(): Promise<void>;

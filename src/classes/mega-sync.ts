@@ -311,4 +311,18 @@ export class MegaSyncFileHost extends FileHost {
 	async spaceUsed(): Promise<number> {
 		return (await this._getAccountInfo()).spaceUsed;
 	}
+
+	async deleteFile(file: FilePath, permanent = false): Promise<boolean> {
+		const { _storage } = this;
+		if (!_storage) throw Error("MEGA storage not initialized");
+
+		const fileToDelete = _storage.root.navigate(file);
+		if (!fileToDelete) return false;
+
+		await fileToDelete.delete(permanent);
+		this.clearDirContentCache();
+		this.clearFolderStatsCache();
+
+		return true;
+	}
 }
