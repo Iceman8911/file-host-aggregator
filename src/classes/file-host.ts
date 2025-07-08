@@ -56,7 +56,9 @@ export type FileOrDirectory = FileHostFile | DirectoryStats;
 const FILE_HOST = "file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
 
-/** Every file host (e.g Mega, MediaFire, etc) must implement this
+/** Every file host (e.g Mega, MediaFire, etc) must implement this.
+ *
+ * ** DO NOT CALL THE CONSTRUCTOR DIRECTLY. USE `<Class>.init()` **
  *
  * Terms:
  *  - `.get...()` means the method is local, in the sense that it only looks through cached files
