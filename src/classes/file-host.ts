@@ -79,6 +79,13 @@ export abstract class FileHost {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
+	/** Deletes the file host from the disk and memory. */
+	async deleteInstance(): Promise<void> {
+		await hfs.delete(convertPathToString(this.root()));
+
+		FileHost.collection.delete(this.id);
+	}
+
 	/** Downloads and caches all files (or only their metadata) from the file host, as `FileHostFile` instances into the file system.
 	 */
 	abstract downloadFiles(
