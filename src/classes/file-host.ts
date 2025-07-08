@@ -589,7 +589,7 @@ export class FileHostFile {
 	): Promise<Blob> {
 		if (
 			this._file &&
-			this._file.cachedOn.getTime() + FileHostFile._cacheDuration <
+			this._file.cachedOn.getTime() + FileHostFile._cacheDuration >
 				Date.now() &&
 			!forceDownload
 		)
