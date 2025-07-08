@@ -1,12 +1,3 @@
-import { hfs } from "@humanfs/web";
-import { ReactiveMap } from "@solid-primitives/map";
-import {
-	parse,
-	stringify,
-	stringifyAsync,
-} from "@worker-tools/structured-json";
-
-import QuickLRU from "quick-lru";
 import { gFileHosts } from "~/declarations/enums";
 import { convertPathToString, generateUUID } from "~/declarations/functions";
 import type {
@@ -26,6 +17,13 @@ import type {
 } from "~/declarations/types";
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import type { MegaSyncFileHost } from "./mega-sync";
+
+const { hfs } = await import("@humanfs/web");
+const { parse, stringify, stringifyAsync } = await import(
+	"@worker-tools/structured-json"
+);
+const { ReactiveMap } = await import("@solid-primitives/map");
+const { default: QuickLRU } = await import("quick-lru");
 
 export type FileHostID = Brand<UUID, "FileHostID">;
 export type FileHostImplementations = MegaSyncFileHost;
