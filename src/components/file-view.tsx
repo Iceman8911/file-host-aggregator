@@ -658,7 +658,7 @@ function OptionsDropdownBtn() {
 		children: JSX.Element;
 	}) {
 		return (
-			<div class="dropdown dropdown-top dropdown-center absolute bottom-8 right-12 md:bottom-10 md:right-14 [position-area:start]">
+			<div class="dropdown dropdown-left dropdown-end absolute bottom-8 right-12 md:bottom-10 md:right-14 [position-area:start]">
 				{/* biome-ignore lint/a11y: Bug with safari makes buttons unfocusable :( */}
 				<div tabindex="0" role="button" class="">
 					{prop.btn}
@@ -666,7 +666,7 @@ function OptionsDropdownBtn() {
 
 				<ul
 					tabindex="0"
-					class="dropdown-content menu bg-base-100 rounded-box z-1 w-40 lg:w-35 p-2 shadow-sm mb-4 border border-secodnary font-semibold [&_button]:text-center"
+					class="dropdown-content menu bg-base-100 rounded-box z-1 w-max p-2 shadow-sm mr-4 border border-secondary font-semibold [&_button]:text-center"
 				>
 					{prop.children}
 				</ul>
