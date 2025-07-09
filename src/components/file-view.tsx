@@ -50,7 +50,9 @@ import type {
 import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
 import CustomContextMenu from "./menu/custom-context-menu";
+import CreateFileHostModal from "./modal/create-file-host";
 import FileDetails from "./modal/file-details";
+import { showModal } from "./modal/modal";
 
 const { quickSort } = await import("~/declarations/async-quick-sort");
 
@@ -407,11 +409,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				state.data = data;
 			}),
 		);
-		(
-			document.getElementById(fileDetailsDialogData.modalId) as
-				| HTMLDialogElement
-				| undefined
-		)?.showModal();
+		showModal(fileDetailsDialogData.modalId);
 	};
 
 	function ContextMenu(prop: { data: FileOrDirectoryOrFileHost }) {
@@ -657,42 +655,52 @@ function OptionsDropdownBtn() {
 		);
 	}
 
-	return (
-		<Dropdown
-			btn={
-				<button
-					type="button"
-					class="size-16 btn btn-secondary rounded-[50%] opacity-85"
-				>
-					<OthersIcon />
-				</button>
-			}
-		>
-			<li>
-				<button type="button">
-					<HardDriveIcon />
-					Create File Host
-				</button>
-			</li>
+	const createFileHostModalId = generateUUID();
 
-			<li>
-				<button type="button">
-					<UploadFileIcon />
-					Upload File
-				</button>
-			</li>
-			<li>
-				<button type="button">
-					<UploadFolderIcon />
-					Upload Folder
-				</button>
-			</li>
-			<li>
-				<button type="button">
-					<FileCogIcon />
-					View Settings
-				</button>
-			</li>
-		</Dropdown>
+	return (
+		<>
+			<Dropdown
+				btn={
+					<button
+						type="button"
+						class="size-16 btn btn-secondary rounded-[50%] opacity-85"
+					>
+						<OthersIcon />
+					</button>
+				}
+			>
+				<li>
+					<button
+						type="button"
+						onClick={(_) => showModal(createFileHostModalId)}
+					>
+						<HardDriveIcon />
+						Create File Host
+					</button>
+				</li>
+
+				<li>
+					<button type="button">
+						<UploadFileIcon />
+						Upload File
+					</button>
+				</li>
+				<li>
+					<button type="button">
+						<UploadFolderIcon />
+						Upload Folder
+					</button>
+				</li>
+				<li>
+					<button type="button">
+						<FileCogIcon />
+						View Settings
+					</button>
+				</li>
+			</Dropdown>
+
+			{/* Dialogs */}
+			<CreateFileHostModal modalId={createFileHostModalId} />
+		</>
 	);
 }

@@ -26,6 +26,16 @@ export function GenericModal(prop: { modalId: string; children: JSX.Element }) {
 	);
 }
 
+export function getDialogElementFromId(id: string): HTMLDialogElement | null {
+	const dialog = document.getElementById(id);
+	if (dialog && dialog instanceof HTMLDialogElement) return dialog;
+	else return null;
+}
+
 export function showModal(modalId: string) {
-	(document.getElementById(modalId) as HTMLDialogElement)?.showModal();
+	getDialogElementFromId(modalId)?.showModal();
+}
+
+export function closeModal(modalId: string) {
+	getDialogElementFromId(modalId)?.close();
 }

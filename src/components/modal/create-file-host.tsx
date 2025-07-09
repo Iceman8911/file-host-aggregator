@@ -4,7 +4,7 @@ import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import { gFileHosts } from "~/declarations/enums";
 import { gFileHostIcons } from "~/declarations/icons";
-import { GenericModal } from "./modal";
+import { closeModal, GenericModal } from "./modal";
 
 type FileHostInitData = {
 	email: string;
@@ -157,11 +157,7 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 											setIsInitializingFileHost(false);
 											createFileHostForm.reset();
 											setFileHostInitData(DEFAULT_FILE_HOST_INIT_DATA);
-											(
-												document.getElementById(
-													prop.modalId,
-												) as HTMLDialogElement
-											).close();
+											closeModal(prop.modalId);
 										}
 									}}
 								>
