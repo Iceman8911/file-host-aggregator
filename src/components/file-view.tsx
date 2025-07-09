@@ -1,6 +1,7 @@
 import { createAsync } from "@solidjs/router";
 import CloudIcon from "lucide-solid/icons/cloud";
 import CopyIcon from "lucide-solid/icons/copy";
+import DownloadIcon from "lucide-solid/icons/download";
 import OthersIcon from "lucide-solid/icons/ellipsis-vertical";
 import DefaultFileIcon from "lucide-solid/icons/file";
 import ArchiveFileIcon from "lucide-solid/icons/file-archive";
@@ -413,8 +414,8 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 	};
 
 	function ContextMenu(prop: { data: FileOrDirectoryOrFileHost }) {
-		return (
-			<>
+		function UniqueOptions() {
+			return (
 				<Switch>
 					<Match
 						when={
@@ -454,24 +455,41 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 						}}
 					</Match>
 				</Switch>
+			);
+		}
+
+		return (
+			<>
+				<UniqueOptions />
+
+				<li>
+					<button type="button">
+						<DownloadIcon />
+						Download
+					</button>
+				</li>
+
 				<li>
 					<button type="button">
 						<CopyIcon />
 						Copy
 					</button>
 				</li>
+
 				<li>
 					<button type="button">
 						<MoveIcon />
 						Move
 					</button>
 				</li>
+
 				<li>
 					<button type="button" class="text-error">
 						<TrashIcon />
 						Delete
 					</button>
 				</li>
+
 				<li>
 					<button
 						type="button"
