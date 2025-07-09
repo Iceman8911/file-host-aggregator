@@ -16,6 +16,7 @@ type FileDetailsProps = {
 	path: string;
 	dateCreated: Date;
 	url: URL | null;
+	type: "File Host" | "Folder" | "File";
 };
 
 /** Displays the relevant data of a given `FileHostFile` of `FileHost` */
@@ -42,6 +43,7 @@ export default function FileDetails(prop: {
 				name: data.name,
 				path: "/",
 				size: convertBytes(await data.spaceUsed()),
+				type: "File Host",
 				url: null,
 			};
 		} else if (data instanceof FileHostFile) {
@@ -50,6 +52,7 @@ export default function FileDetails(prop: {
 				name: data.name(true),
 				path: convertPathToString(data.relativePath),
 				size: convertBytes(data.size),
+				type: "File",
 				url: data.url,
 			};
 		} else {
@@ -59,6 +62,7 @@ export default function FileDetails(prop: {
 				// TODO: add a central function for getting relative paths instead of this hacky workaround that may break if I change the logic in the future
 				path: convertPathToString(data.path.slice(2)),
 				size: convertBytes(data.size),
+				type: "Folder",
 				url: null,
 			};
 		}
@@ -68,7 +72,7 @@ export default function FileDetails(prop: {
 
 	return (
 		<GenericModal modalId={prop.modalId}>
-			<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-2 break-words">
 				<h2 class="text-lg font-semibold">Details</h2>
 				<div class="flex flex-col gap-1">
 					<Suspense fallback={<LoadingSpinner />}>
@@ -78,12 +82,35 @@ export default function FileDetails(prop: {
 									<span>
 										<strong>Name:</strong> {val().name}
 									</span>
+
+									<span>
+										<strong>Type:</strong> {val().type}
+									</span>
+
+									<Show when={val().url}>
+										{(val) => (
+											<span>
+												<strong>URL:</strong>{" "}
+												<a
+													href={val().toString()}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="link link-primary"
+												>
+													{val().toString()}
+												</a>
+											</span>
+										)}
+									</Show>
+
 									<span>
 										<strong>Size:</strong> {val().size}
 									</span>
+
 									<span>
 										<strong>Path:</strong> {val().path}
 									</span>
+
 									<span>
 										<strong>Date Created:</strong>{" "}
 										{val().dateCreated.toLocaleDateString()}
