@@ -69,6 +69,12 @@ type FilePathTracker = {
 	relativePath: RelativeDirectoryPath;
 };
 
+/** I hate that I actually wrote this >~< */
+type FilesOrDirectoriesOrFileHosts =
+	| FileOrDirectory[]
+	| FileHostImplementations[]
+	| null;
+
 type FileViewSettings = {
 	iconSize: "XS" | "S" | "M" | "L" | "XL";
 	/** How the icons / file buttons will be displayed */
@@ -81,25 +87,20 @@ type FileViewSettings = {
 	sorting: { param: "name" | "date" | "size" | "type"; order: "asc" | "desc" };
 };
 
-/** I hate that I actually wrote this >~< */
-type FilesOrDirectoriesOrFileHosts =
-	| FileOrDirectory[]
-	| FileHostImplementations[]
-	| null;
+const defaultFileViewSettings: Readonly<FileViewSettings> = {
+	iconSize: "M",
+	isRefreshing: false,
+	mode: "grid",
+	pathData: { fileHost: null, relativePath: ROOT_PATH },
+	// Sort alpabetically by default
+	sorting: { order: "asc", param: "name" },
+};
+
+const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
+	defaultFileViewSettings,
+);
 
 export default function FileView() {
-	const defaultFileViewSettings: Readonly<FileViewSettings> = {
-		iconSize: "M",
-		isRefreshing: false,
-		mode: "grid",
-		pathData: { fileHost: null, relativePath: ROOT_PATH },
-		// Sort alpabetically by default
-		sorting: { order: "asc", param: "name" },
-	};
-	const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
-		defaultFileViewSettings,
-	);
-
 	const _fetchedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
 	>(async () => {
@@ -356,7 +357,7 @@ function UtilityIcons(prop: {
 	};
 
 	return (
-		<div class="flex gap-2 justify-center items-center *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:rounded-2xl">
+		<div class="flex gap-2 justify-center items-center *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:btn-circle">
 			<button type="button">
 				<SearchIcon />
 			</button>{" "}
@@ -682,7 +683,7 @@ function OptionsDropdownBtn() {
 				btn={
 					<button
 						type="button"
-						class="size-16 btn btn-secondary rounded-[50%] opacity-85"
+						class="size-16 btn btn-secondary btn-circle opacity-85"
 					>
 						<OthersIcon />
 					</button>
