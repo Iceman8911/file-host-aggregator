@@ -1,24 +1,36 @@
 import { createAsync } from "@solidjs/router";
 import CloudIcon from "lucide-solid/icons/cloud";
 import CopyIcon from "lucide-solid/icons/copy";
+import OthersIcon from "lucide-solid/icons/ellipsis-vertical";
 import DefaultFileIcon from "lucide-solid/icons/file";
 import ArchiveFileIcon from "lucide-solid/icons/file-archive";
 import AudioFileIcon from "lucide-solid/icons/file-audio";
+import FileCogIcon from "lucide-solid/icons/file-cog";
 import ImageFileIcon from "lucide-solid/icons/file-image";
 import UnknownFileIcon from "lucide-solid/icons/file-question-mark";
 import TextFileIcon from "lucide-solid/icons/file-text";
 import DocumentFileIcon from "lucide-solid/icons/file-type";
+import UploadFileIcon from "lucide-solid/icons/file-up";
 import VideoFileIcon from "lucide-solid/icons/file-video";
 import DefaultFolderIcon from "lucide-solid/icons/folder";
 import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
+import UploadFolderIcon from "lucide-solid/icons/folder-up";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import InfoIcon from "lucide-solid/icons/info";
 import MoveIcon from "lucide-solid/icons/move-up-left";
 import RefreshIcon from "lucide-solid/icons/refresh-ccw";
 import SearchIcon from "lucide-solid/icons/search";
 import TrashIcon from "lucide-solid/icons/trash-2";
-import { createMemo, For, Match, Show, Suspense, Switch } from "solid-js";
+import {
+	createMemo,
+	For,
+	type JSX,
+	Match,
+	Show,
+	Suspense,
+	Switch,
+} from "solid-js";
 import { createStore, produce, type SetStoreFunction } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
@@ -29,7 +41,6 @@ import {
 	type FileOrDirectoryOrFileHost,
 	FileType,
 } from "~/classes/file-host";
-import { quickSort } from "~/declarations/async-quick-sort";
 import { generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type {
@@ -40,6 +51,8 @@ import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
 import CustomContextMenu from "./menu/custom-context-menu";
 import FileDetails from "./modal/file-details";
+
+const { quickSort } = await import("~/declarations/async-quick-sort");
 
 type FilePathTracker = {
 	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
@@ -195,29 +208,34 @@ export default function FileView() {
 	);
 
 	return (
-		<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-2 size-full *:bg-base-200 *:rounded-field *:w-full">
-			{/* Breadcrumbs bar */}
-			<DirectoryPathBar
-				pathData={fileViewSettings.pathData}
-				setter={setFileViewSettings}
-			/>
+		<>
+			<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-2 size-full *:bg-base-200 *:rounded-field *:w-full">
+				{/* Breadcrumbs bar */}
+				<DirectoryPathBar
+					pathData={fileViewSettings.pathData}
+					setter={setFileViewSettings}
+				/>
 
-			{/* Utility icons */}
-			<UtilityIcons
-				settings={fileViewSettings}
-				settingsSetter={setFileViewSettings}
-			/>
+				{/* Utility icons */}
+				<UtilityIcons
+					settings={fileViewSettings}
+					settingsSetter={setFileViewSettings}
+				/>
 
-			{/* Folder/File view */}
-			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<ListOfFilesAndFoldersAndFileHosts
-						list={displayedFilesOrFileHosts()}
-						settingsSetter={setFileViewSettings}
-					/>
-				</Suspense>
+				{/* Folder/File view */}
+				<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+					<Suspense fallback={<LoadingSpinner />}>
+						<ListOfFilesAndFoldersAndFileHosts
+							list={displayedFilesOrFileHosts()}
+							settingsSetter={setFileViewSettings}
+						/>
+					</Suspense>
+				</div>
 			</div>
-		</div>
+
+			{/* Option Dropdown Btn */}
+			<OptionsDropdownBtn />
+		</>
 	);
 }
 
@@ -612,5 +630,69 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				)}
 			</Show>
 		</>
+	);
+}
+
+/** For exposing other actions like creating file hosts / uploading files */
+function OptionsDropdownBtn() {
+	function Dropdown(prop: {
+		btn: JSX.Element;
+		/** A list of options, excluding the `<ul>` tags */
+		children: JSX.Element;
+	}) {
+		return (
+			<div class="dropdown dropdown-top dropdown-center absolute bottom-8 right-12 md:bottom-10 md:right-14 [position-area:start]">
+				{/* biome-ignore lint/a11y: Bug with safari makes buttons unfocusable :( */}
+				<div tabindex="0" role="button" class="">
+					{prop.btn}
+				</div>
+
+				<ul
+					tabindex="0"
+					class="dropdown-content menu bg-base-100 rounded-box z-1 w-40 lg:w-35 p-2 shadow-sm mb-4 border border-secodnary font-semibold [&_button]:text-center"
+				>
+					{prop.children}
+				</ul>
+			</div>
+		);
+	}
+
+	return (
+		<Dropdown
+			btn={
+				<button
+					type="button"
+					class="size-16 btn btn-secondary rounded-[50%] opacity-85"
+				>
+					<OthersIcon />
+				</button>
+			}
+		>
+			<li>
+				<button type="button">
+					<HardDriveIcon />
+					Create File Host
+				</button>
+			</li>
+
+			<li>
+				<button type="button">
+					<UploadFileIcon />
+					Upload File
+				</button>
+			</li>
+			<li>
+				<button type="button">
+					<UploadFolderIcon />
+					Upload Folder
+				</button>
+			</li>
+			<li>
+				<button type="button">
+					<FileCogIcon />
+					View Settings
+				</button>
+			</li>
+		</Dropdown>
 	);
 }

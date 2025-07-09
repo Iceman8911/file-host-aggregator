@@ -11,7 +11,7 @@ export default function Home() {
 	const fileHostMapSize = () => fileHostMap.size;
 
 	return (
-		<main class="p-4 size-full flex">
+		<main class="p-2 lg:p-4 size-full flex">
 			<Show when={fileHostMapSize()} fallback={CreateFileHostComponent()}>
 				<FileView />
 			</Show>
