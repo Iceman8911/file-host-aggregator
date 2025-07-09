@@ -16,6 +16,7 @@ import VideoFileIcon from "lucide-solid/icons/file-video";
 import DefaultFolderIcon from "lucide-solid/icons/folder";
 import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
 import OpenedFolderIcon from "lucide-solid/icons/folder-open";
+import CreateFolderIcon from "lucide-solid/icons/folder-plus";
 import UploadFolderIcon from "lucide-solid/icons/folder-up";
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import InfoIcon from "lucide-solid/icons/info";
@@ -707,6 +708,12 @@ function OptionsDropdownBtn() {
 					<button type="button">
 						<UploadFolderIcon />
 						Upload Folder
+					</button>
+				</li>
+				<li>
+					<button type="button">
+						<CreateFolderIcon />
+						Create Folder
 					</button>
 				</li>
 				<li>
