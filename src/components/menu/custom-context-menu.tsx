@@ -109,7 +109,7 @@ export default function CustomContextMenu(prop: {
 					>
 						<ul
 							aria-label="Context menu"
-							class="menu dropdown-content bg-neutral rounded-box border border-info z-1 min-w-fit w-35 p-2 shadow-sm text-info text-[0.9rem] [&_svg]:size-5"
+							class="menu dropdown-content bg-base-100 rounded-box border border-secondary z-1 min-w-fit w-35 p-2 shadow-sm text-secondary text-[0.9rem] [&_svg]:size-5"
 							ref={$contextMenu}
 							style={{
 								position: "fixed",

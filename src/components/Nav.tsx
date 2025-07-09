@@ -3,7 +3,8 @@ import type { LucideProps } from "lucide-solid";
 import FilesIcon from "lucide-solid/icons/file-stack";
 import HouseIcon from "lucide-solid/icons/house";
 import MenuIcon from "lucide-solid/icons/menu";
-import FavouritesIcon from "lucide-solid/icons/star";
+import SettingsIcon from "lucide-solid/icons/settings";
+// import FavouritesIcon from "lucide-solid/icons/star";
 import { For, type JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
@@ -12,7 +13,8 @@ export default function Nav() {
 	const ROUTE_LINKS = [
 		{ icon: HouseIcon, name: "Home", route: "/" },
 		{ icon: FilesIcon, name: "Files", route: "/files" },
-		{ icon: FavouritesIcon, name: "Favourites", route: "/favourites" },
+		// { icon: FavouritesIcon, name: "Favourites", route: "/favourites" },
+		{ icon: SettingsIcon, name: "Settings", route: "/settings" },
 	] as const satisfies ReadonlyArray<{
 		route: string;
 		name: string;
@@ -43,7 +45,7 @@ export default function Nav() {
 					<For each={ROUTE_LINKS}>
 						{({ icon, name, route }) => (
 							<li class="my-1">
-								<A href={route} activeClass="bg-neutral" end>
+								<A href={route} activeClass="menu-active" end>
 									<Dynamic component={icon} />
 									{name}
 								</A>
