@@ -195,7 +195,7 @@ export default function FileView() {
 	);
 
 	return (
-		<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-4 size-full *:bg-base-200 *:rounded-field *:w-full">
+		<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-2 size-full *:bg-base-200 *:rounded-field *:w-full">
 			{/* Breadcrumbs bar */}
 			<DirectoryPathBar
 				pathData={fileViewSettings.pathData}
