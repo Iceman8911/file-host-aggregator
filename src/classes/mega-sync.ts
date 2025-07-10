@@ -53,7 +53,8 @@ export class MEGASyncFileHost extends FileHost {
 	) {
 		gThrowIfNoInternet();
 
-		this._storage = await new MEGASyncStorage(...args).ready;
+		if (!this._storage)
+			this._storage = await new MEGASyncStorage(...args).ready;
 
 		await this.downloadFiles();
 
