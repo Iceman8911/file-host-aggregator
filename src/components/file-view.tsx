@@ -58,8 +58,6 @@ import CreateFileHostModal from "./modal/create-file-host";
 import FileDetails from "./modal/file-details";
 import { GenericModal, showModal } from "./modal/modal";
 
-const { quickSort } = await import("~/declarations/async-quick-sort");
-
 type FilePathTracker = {
 	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
 	fileHost: FileHostImplementations | null;
@@ -140,6 +138,7 @@ export default function FileView() {
 				const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
 				if (!originalFilesOrFileHosts) return [];
 
+				const { quickSort } = await import("~/declarations/async-quick-sort");
 				//@ts-expect-error Yeah, I messed up the types, but it works :D
 				const sorted: FilesOrDirectoriesOrFileHosts = await quickSort<
 					FileOrDirectory | FileHostImplementations
