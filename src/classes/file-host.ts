@@ -80,7 +80,7 @@ export abstract class FileHost {
 	 *
 	 * Make sure that the instance is properly initialized before fetching files.
 	 */
-	static init(): Promise<FileHostImplementations> {
+	static init(...args: unknown[]): Promise<FileHostImplementations> {
 		throw new Error("Method not implemented! Use derived class");
 	}
 
@@ -97,15 +97,15 @@ export abstract class FileHost {
 	}
 
 	protected _getAbsolutePathFromRelativePath(
-		filePath: AbsoluteDirectoryPath,
-	): RelativeDirectoryPath;
+		filePath: RelativeDirectoryPath,
+	): AbsoluteDirectoryPath;
 	protected _getAbsolutePathFromRelativePath(
-		filePath: AbsoluteFilePath,
-	): RelativeFilePath;
+		filePath: RelativeFilePath,
+	): AbsoluteFilePath;
 	protected _getAbsolutePathFromRelativePath(
-		filePath: AbsoluteFileOrDirectoryPath,
-	): RelativeFileOrDirectoryPath {
-		return [this.root(), filePath].flat();
+		filePath: RelativeFileOrDirectoryPath,
+	): AbsoluteFileOrDirectoryPath {
+		return [...this.root(), ...filePath];
 	}
 
 	protected static _getDirectoryFromFilePath(

@@ -326,6 +326,29 @@ export class MegaSyncFileHost extends FileHost {
 		if (!fileToDelete) return false;
 
 		await fileToDelete.delete(permanent);
+		await hfs.delete(
+			convertPathToString(this._getAbsolutePathFromRelativePath(file)),
+		);
+		this.clearDirContentCache();
+		this.clearDirectoryStatsCache();
+
+		return true;
+	}
+
+	async deleteDirectory(
+		directory: RelativeDirectoryPath,
+		permanent?: true,
+	): Promise<boolean> {
+		const { _storage } = this;
+		if (!_storage) throw Error("MEGA storage not initialized");
+
+		const directoryToDelete = _storage.root.navigate(directory);
+		if (!directoryToDelete) return false;
+
+		await directoryToDelete.delete(permanent);
+		await hfs.delete(
+			convertPathToString(this._getAbsolutePathFromRelativePath(directory)),
+		);
 		this.clearDirContentCache();
 		this.clearDirectoryStatsCache();
 
