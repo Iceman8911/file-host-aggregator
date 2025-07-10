@@ -163,7 +163,6 @@ export default function FileView() {
 								? 1
 								: -1;
 						}
-						// TODO: Add a way for obtaining folder dates.
 						case "date": {
 							const dateOfA =
 								a instanceof FileHost
@@ -191,14 +190,14 @@ export default function FileView() {
 								a instanceof FileHost
 									? await a.spaceUsed()
 									: a instanceof FileHostFile
-										? a.dateCreated.getTime()
-										: Date.now();
+										? a.size
+										: a.size;
 							const sizeOfB =
 								b instanceof FileHost
 									? b.dateCreated.getTime()
 									: b instanceof FileHostFile
-										? b.dateCreated.getTime()
-										: Date.now();
+										? b.size
+										: b.size;
 
 							return (
 								sortingOrder() === "asc"
