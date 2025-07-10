@@ -702,6 +702,7 @@ function OptionsDropdownBtn() {
 					<button
 						type="button"
 						class="size-16 btn btn-secondary btn-circle opacity-85"
+						title="Other Actions"
 					>
 						<OthersIcon />
 					</button>
