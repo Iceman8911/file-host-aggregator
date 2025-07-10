@@ -140,10 +140,11 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 
 											switch (fileHost()) {
 												case gFileHosts.MEGA: {
-													const { MegaSyncFileHost: MEGASyncFileHost } =
-														await import("./../../classes/mega-sync");
+													const { MEGASyncFileHost } = await import(
+														"./../../classes/mega-sync"
+													);
 													const { email, name, password } = fileHostInitData;
-													await MegaSyncFileHost.init({
+													await MEGASyncFileHost.init({
 														email,
 														name,
 														password,

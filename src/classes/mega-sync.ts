@@ -1,4 +1,3 @@
-import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { gFileHosts } from "~/declarations/enums";
 import {
@@ -17,8 +16,11 @@ import type {
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
+const { hfs } = await import("@humanfs/web");
 const { Storage: MEGASyncStorage, File: MegaFile } = await import("megajs");
 const USER_AGENT = "FileHostAggregator/0.1";
+const MEGA_CONNECTION_ERROR_MESSAGE =
+	"Unable to connect to MEGA Sync. Some features may be unavailable";
 
 type AccountInfo = ExtractValueTypeFromPromise<
 	ReturnType<typeof MEGASyncStorage.prototype.getAccountInfo>
@@ -47,16 +49,15 @@ export class MEGASyncFileHost extends FileHost {
 		return { _accountInfoCache, id, dateCreated, name, email, password, type };
 	}
 
-	/** @throws if a stable internet connection cannot be established */
 	private async _initMEGAStorage(
 		...args: ConstructorParameters<typeof MEGASyncStorage>
 	) {
 		gThrowIfNoInternet();
 
-		if (!this._storage)
+		if (!this._storage) {
 			this._storage = await new MEGASyncStorage(...args).ready;
-
-		await this.downloadFiles();
+			await this.downloadFiles();
+		}
 
 		return this._storage;
 	}
@@ -77,38 +78,31 @@ export class MEGASyncFileHost extends FileHost {
 	static override async init(
 		arg:
 			| { name: string; email: string; password: string; restore: false }
-			| (ClassPropsOnly<MEGASyncFileHost> & {
-					/** If true, typescript will know that the object props should overwrite the instance's */
-					restore: true;
-			  }),
+			| (ClassPropsOnly<MEGASyncFileHost> & { restore: true }),
 	) {
 		const { email, name, password } = arg;
 		const instance = new MEGASyncFileHost(name, email, password, null);
 
-		// Loop through and restore the props
 		if (arg.restore) {
-			for (const key in arg) {
-				//@ts-expect-error
-				instance[key] = arg[key];
-			}
+			Object.assign(instance, arg);
 		}
 
 		try {
-			// Not `await`ed since it may cause a little delay
-			instance._initMEGAStorage({
-				email,
-				password,
-				userAgent: USER_AGENT,
-			});
-		} catch (_) {
-			console.error(
-				"Unable to connect to MEGA Sync. Some features may be unavailable",
-			);
+			// Fire and forget, but handle errors
+			instance
+				._initMEGAStorage({
+					email,
+					password,
+					userAgent: USER_AGENT,
+				})
+				.catch((err) => {
+					console.error(MEGA_CONNECTION_ERROR_MESSAGE, err);
+				});
+		} catch (err) {
+			console.error(MEGA_CONNECTION_ERROR_MESSAGE, err);
 		}
 
-		// Save after successful initialization
 		await instance.save();
-
 		return instance;
 	}
 
@@ -119,8 +113,7 @@ export class MEGASyncFileHost extends FileHost {
 	): Promise<MutableFile> {
 		if (!folderToStartFrom) throw Error("MEGA storage not initialized");
 		if (!path.length) return folderToStartFrom;
-		const directoryToFindOrCreate = path[0];
-		const restOfDirectoryPath: RelativeDirectoryPath = path.slice(1);
+		const [directoryToFindOrCreate, ...restOfDirectoryPath] = path;
 
 		const createdOrFoundDirectory =
 			folderToStartFrom.find(directoryToFindOrCreate) ??
@@ -135,12 +128,10 @@ export class MEGASyncFileHost extends FileHost {
 		name: FileName,
 	): Promise<ResultType<URL>> {
 		try {
-			const { _storage } = this;
-			if (!_storage) throw Error("MEGA storage not initialized");
-
-			const folder = await this._getFolder(path);
+			const _storage = await this._getStorage();
+			const folder = await this._getFolder(path, _storage.root);
 			const uploadedFile = (await folder.upload(
-				{ name: name, size: file.size },
+				{ name, size: file.size },
 				await file.text(),
 			).complete) as MutableFile;
 			return {
@@ -158,7 +149,6 @@ export class MEGASyncFileHost extends FileHost {
 		onlyMetaData = false,
 	) {
 		if (onlyMetaData) return undefined;
-
 		return new Blob([await file.downloadBuffer({})]);
 	}
 
@@ -167,9 +157,7 @@ export class MEGASyncFileHost extends FileHost {
 			const fileFromUrl = MegaFile.fromURL(url.toString());
 			const possibleBlob =
 				await MEGASyncFileHost._downloadFileContent(fileFromUrl);
-
 			if (!possibleBlob) throw Error("File unavailable");
-
 			return { result: possibleBlob, state: "success" };
 		} catch (e) {
 			return { error: e, state: "error" };
@@ -177,106 +165,60 @@ export class MEGASyncFileHost extends FileHost {
 	}
 
 	async downloadFiles(getMetadataOnly = true): Promise<void> {
-		const { _storage, email, password } = this;
-		if (!_storage) {
-			this._initMEGAStorage({
-				email,
-				password,
-				userAgent: USER_AGENT,
-			});
-			return;
-		}
+		const _storage = await this._getStorage();
+		const fileRefs = _storage.filter(() => true);
 
-		// Get references to all the files
-		const fileRefs = _storage.filter((_) => true);
+		const processFile = async (
+			file: MutableFile,
+			relativePath: RelativeDirectoryPath,
+		) => {
+			await FileHostFile.init({
+				dateCreated: new Date(file.createdAt),
+				fileData: await MEGASyncFileHost._downloadFileContent(
+					file,
+					getMetadataOnly,
+				),
+				fileHostId: this.id,
+				fileUrl: await file.link({ noKey: false }),
+				name: file.name ?? DEFAULT_FILE_NAME,
+				relativePath,
+				size: file.size,
+			});
+		};
+
+		const traverse = async (node: MutableFile, path: RelativeDirectoryPath) => {
+			if (!node.directory) {
+				await processFile(node, path);
+			} else if (node.children) {
+				for (const child of node.children) {
+					await traverse(
+						child,
+						child.directory
+							? [...path, child.name ?? DEFAULT_FILE_NAME]
+							: [...path],
+					);
+				}
+			}
+		};
 
 		for (const ref of fileRefs) {
-			// console.log(ref);
-
-			// It's a file at the root level
-			if (!ref.directory) {
-				await FileHostFile.init({
-					dateCreated: new Date(ref.createdAt),
-					fileData: await MEGASyncFileHost._downloadFileContent(
-						ref,
-						getMetadataOnly,
-					),
-					fileHostId: this.id,
-					fileUrl: await ref.link({ noKey: false }),
-					name: ref.name ?? DEFAULT_FILE_NAME,
-					relativePath: ROOT_PATH,
-					size: ref.size,
-				});
-			} else {
-				type FileAndPath = {
-					file: MutableFile;
-					relativePath: RelativeDirectoryPath;
-				};
-
-				// Recursively loop through it's children until we find the files.
-				const searchForNestedFiles = (
-					possibleDirectory: MutableFile,
-					pathAccumulator: RelativeDirectoryPath,
-					foundFiles: Array<FileAndPath> = [],
-				): ReadonlyArray<FileAndPath> => {
-					if (!possibleDirectory.directory) {
-						foundFiles.push({
-							file: possibleDirectory,
-							relativePath: pathAccumulator,
-						});
-						return foundFiles;
-					}
-
-					if (!possibleDirectory.children) return foundFiles;
-
-					return possibleDirectory.children.flatMap((nestedFileOrDirectory) => {
-						return searchForNestedFiles(
-							nestedFileOrDirectory,
-							nestedFileOrDirectory.directory
-								? [
-										...pathAccumulator,
-										nestedFileOrDirectory.name ?? DEFAULT_FILE_NAME,
-									]
-								: [...pathAccumulator],
-							foundFiles,
-						);
-					});
-				};
-
-				searchForNestedFiles(ref, [
-					...ROOT_PATH,
-					ref.name ?? DEFAULT_FILE_NAME,
-				]).forEach(async ({ file, relativePath }) => {
-					await FileHostFile.init({
-						dateCreated: new Date(file.createdAt),
-						fileData: await MEGASyncFileHost._downloadFileContent(
-							file,
-							getMetadataOnly,
-						),
-						fileHostId: this.id,
-						fileUrl: await file.link({ noKey: false }),
-						name: file.name ?? DEFAULT_FILE_NAME,
-						relativePath,
-						size: file.size,
-					});
-				});
-			}
+			await traverse(
+				ref,
+				ref.directory
+					? [...ROOT_PATH, ref.name ?? DEFAULT_FILE_NAME]
+					: ROOT_PATH,
+			);
 		}
 
-		// Ensure that all unneeded files are gone
 		await this.trimOutdatedCache();
 	}
 
 	async trimOutdatedCache(): Promise<void> {
-		const { _storage } = this;
-		if (!_storage) return;
-
+		const _storage = await this._getStorage();
 		const allFiles = await this.getAllFiles();
 
 		for (const file of allFiles) {
-			const fileRelativePath = file.relativePath;
-			const possibleFileOnFileHost = _storage.root.navigate(fileRelativePath);
-
+			const possibleFileOnFileHost = _storage.root.navigate(file.relativePath);
 			if (!possibleFileOnFileHost) {
 				// The file doesn't exist on the server so ensure it isn't on the client too
 				await hfs.delete(convertPathToString(file.path));
@@ -288,24 +230,19 @@ export class MEGASyncFileHost extends FileHost {
 	}
 
 	private async _getAccountInfo() {
-		const { _accountInfoCache: accountInfo } = this;
-		// If the cache is not empty, is still valid (or there is no stable internet connection), return the cached info
 		if (
-			accountInfo &&
-			(Date.now() - accountInfo.cachedOn.getTime() <
+			this._accountInfoCache &&
+			(Date.now() - this._accountInfoCache.cachedOn.getTime() <
 				MEGASyncFileHost._refreshCacheIn ||
 				!(await gIsUserConnectedToInternet()))
-		)
-			return accountInfo.info;
+		) {
+			return this._accountInfoCache.info;
+		}
 
-		this._accountInfoCache = {
-			cachedOn: new Date(),
-			info: await (await this._getStorage()).getAccountInfo(),
-		};
-
+		const info = await (await this._getStorage()).getAccountInfo();
+		this._accountInfoCache = { cachedOn: new Date(), info };
 		this.save();
-
-		return this._accountInfoCache.info;
+		return info;
 	}
 
 	async spaceTotal(): Promise<number> {
@@ -320,9 +257,7 @@ export class MEGASyncFileHost extends FileHost {
 		file: RelativeFilePath,
 		permanent = false,
 	): Promise<boolean> {
-		const { _storage } = this;
-		if (!_storage) throw Error("MEGA storage not initialized");
-
+		const _storage = await this._getStorage();
 		const fileToDelete = _storage.root.navigate(file);
 		if (!fileToDelete) return false;
 
@@ -340,9 +275,7 @@ export class MEGASyncFileHost extends FileHost {
 		directory: RelativeDirectoryPath,
 		permanent?: true,
 	): Promise<boolean> {
-		const { _storage } = this;
-		if (!_storage) throw Error("MEGA storage not initialized");
-
+		const _storage = await this._getStorage();
 		const directoryToDelete = _storage.root.navigate(directory);
 		if (!directoryToDelete) return false;
 

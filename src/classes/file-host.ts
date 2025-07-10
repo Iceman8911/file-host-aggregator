@@ -441,10 +441,8 @@ export async function initFileHosts(): Promise<
 			// TODO: Depending on the `.type`, instantiate the appropriate class
 			switch (type) {
 				case gFileHosts.MEGA: {
-					const { MegaSyncFileHost: MEGASyncFileHost } = await import(
-						"./mega-sync"
-					);
-					const instance = await MegaSyncFileHost.init({
+					const { MEGASyncFileHost } = await import("./mega-sync");
+					const instance = await MEGASyncFileHost.init({
 						...props,
 						restore: true,
 					});
