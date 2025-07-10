@@ -113,7 +113,7 @@ export default function FileDetails(prop: {
 
 									<span>
 										<strong>Date Created:</strong>{" "}
-										{val().dateCreated.toLocaleDateString()}
+										{val().dateCreated.toUTCString()}
 									</span>
 								</>
 							)}
