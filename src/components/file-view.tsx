@@ -25,10 +25,12 @@ import RefreshIcon from "lucide-solid/icons/refresh-ccw";
 import SearchIcon from "lucide-solid/icons/search";
 import TrashIcon from "lucide-solid/icons/trash-2";
 import {
+	createEffect,
 	createMemo,
 	For,
 	type JSX,
 	Match,
+	on,
 	Show,
 	Suspense,
 	Switch,
@@ -54,7 +56,7 @@ import LoadingSpinner from "./loading-spinner";
 import CustomContextMenu from "./menu/custom-context-menu";
 import CreateFileHostModal from "./modal/create-file-host";
 import FileDetails from "./modal/file-details";
-import { showModal } from "./modal/modal";
+import { GenericModal, showModal } from "./modal/modal";
 
 const { quickSort } = await import("~/declarations/async-quick-sort");
 
@@ -103,7 +105,7 @@ const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 export default function FileView() {
 	const _fetchedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
-	>(async () => {
+	>(() => {
 		const fileHost = () => fileViewSettings.pathData.fileHost;
 		const relativePath = () => fileViewSettings.pathData.relativePath;
 
@@ -116,97 +118,113 @@ export default function FileView() {
 			);
 		}
 
-		return Array.from(FileHost.collection.values());
+		return Promise.resolve(Array.from(FileHost.collection.values()));
 	});
+
+	const sortingData = () => fileViewSettings.sorting;
+	const sortingOrder = () => sortingData().order;
+	const sortingParam = () => sortingData().param;
 
 	/** stuff like sorting */
 	const _processedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
-	>(async () => {
-		const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
-		if (!originalFilesOrFileHosts) return [];
+	>(
+		on(
+			// Since the memo is async, explicitly pass the dependencies so reactivity isn't lost
+			[
+				async () => await _fetchedFilesOrFileHosts(),
+				sortingOrder,
+				sortingParam,
+			],
+			async () => {
+				const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
+				if (!originalFilesOrFileHosts) return [];
 
-		//@ts-expect-error Yeah, I messed up the types, but it works :D
-		const sorted: FilesOrDirectoriesOrFileHosts = await quickSort<
-			FileOrDirectory | FileHostImplementations
-		>(originalFilesOrFileHosts, async (a, b) => {
-			const sortingData = fileViewSettings.sorting;
+				//@ts-expect-error Yeah, I messed up the types, but it works :D
+				const sorted: FilesOrDirectoriesOrFileHosts = await quickSort<
+					FileOrDirectory | FileHostImplementations
+				>(originalFilesOrFileHosts, async (a, b) => {
+					switch (sortingParam()) {
+						case "name": {
+							const nameOfA =
+								a instanceof FileHost || !(a instanceof FileHostFile)
+									? a.name
+									: a.name(true);
+							const nameOfB =
+								b instanceof FileHost || !(b instanceof FileHostFile)
+									? b.name
+									: b.name(true);
 
-			switch (sortingData.param) {
-				case "name": {
-					const nameOfA =
-						a instanceof FileHost || !(a instanceof FileHostFile)
-							? a.name
-							: a.name(true);
-					const nameOfB =
-						b instanceof FileHost || !(b instanceof FileHostFile)
-							? b.name
-							: b.name(true);
+							return (
+								sortingOrder() === "asc"
+									? nameOfA >= nameOfB
+									: nameOfA <= nameOfB
+							)
+								? 1
+								: -1;
+						}
+						// TODO: Add a way for obtaining folder dates.
+						case "date": {
+							const dateOfA =
+								a instanceof FileHost
+									? a.dateCreated.getTime()
+									: a instanceof FileHostFile
+										? a.dateCreated.getTime()
+										: a.dateEdited.getTime();
+							const dateOfB =
+								b instanceof FileHost
+									? b.dateCreated.getTime()
+									: b instanceof FileHostFile
+										? b.dateCreated.getTime()
+										: b.dateEdited.getTime();
 
-					return (
-						sortingData.order === "asc"
-							? nameOfA >= nameOfB
-							: nameOfA <= nameOfB
-					)
-						? 1
-						: -1;
-				}
-				// TODO: Add a way for obtaining folder dates.
-				case "date": {
-					const dateOfA =
-						a instanceof FileHost
-							? a.dateCreated.getTime()
-							: a instanceof FileHostFile
-								? a.dateCreated.getTime()
-								: a.dateEdited.getTime();
-					const dateOfB =
-						b instanceof FileHost
-							? b.dateCreated.getTime()
-							: b instanceof FileHostFile
-								? b.dateCreated.getTime()
-								: b.dateEdited.getTime();
+							return (
+								sortingOrder() === "asc"
+									? dateOfA >= dateOfB
+									: dateOfA <= dateOfB
+							)
+								? 1
+								: -1;
+						}
+						case "size": {
+							const sizeOfA =
+								a instanceof FileHost
+									? await a.spaceUsed()
+									: a instanceof FileHostFile
+										? a.dateCreated.getTime()
+										: Date.now();
+							const sizeOfB =
+								b instanceof FileHost
+									? b.dateCreated.getTime()
+									: b instanceof FileHostFile
+										? b.dateCreated.getTime()
+										: Date.now();
 
-					return (
-						sortingData.order === "asc"
-							? dateOfA >= dateOfB
-							: dateOfA <= dateOfB
-					)
-						? 1
-						: -1;
-				}
-				case "size": {
-					const sizeOfA =
-						a instanceof FileHost
-							? await a.spaceUsed()
-							: a instanceof FileHostFile
-								? a.dateCreated.getTime()
-								: Date.now();
-					const sizeOfB =
-						b instanceof FileHost
-							? b.dateCreated.getTime()
-							: b instanceof FileHostFile
-								? b.dateCreated.getTime()
-								: Date.now();
+							return (
+								sortingOrder() === "asc"
+									? sizeOfA >= sizeOfB
+									: sizeOfA <= sizeOfB
+							)
+								? 1
+								: -1;
+						}
+						// TODO:
+						case "type":
+							return 0;
+						default:
+							return 0;
+					}
+				});
 
-					return (
-						sortingData.order === "asc"
-							? sizeOfA >= sizeOfB
-							: sizeOfA <= sizeOfB
-					)
-						? 1
-						: -1;
-				}
-				// TODO:
-				case "type":
-					return 0;
-				default:
-					return 0;
-			}
-		});
-
-		const result = sorted;
-		return result;
-	});
+				/** Destructured to ensure that the sorted array has a new reference and the UI changes
+				 *
+				 * This prolly happens since the array of files/directories/file hosts is cached and reused if the viewed directory doesn't change
+				 */
+				const result = [...(sorted ?? [])] as FilesOrDirectoriesOrFileHosts;
+				return result;
+			},
+		),
+	);
 
 	const displayedFilesOrFileHosts = createAsync(() =>
 		_processedFilesOrFileHosts(),
@@ -676,6 +694,7 @@ function OptionsDropdownBtn() {
 	}
 
 	const createFileHostModalId = generateUUID();
+	const fileViewSettingsModalId = generateUUID();
 
 	return (
 		<>
@@ -718,7 +737,10 @@ function OptionsDropdownBtn() {
 					</button>
 				</li>
 				<li>
-					<button type="button">
+					<button
+						type="button"
+						onClick={(_) => showModal(fileViewSettingsModalId)}
+					>
 						<FileCogIcon />
 						View Settings
 					</button>
@@ -727,6 +749,164 @@ function OptionsDropdownBtn() {
 
 			{/* Dialogs */}
 			<CreateFileHostModal modalId={createFileHostModalId} />
+			<FileViewSettingsModal modalId={fileViewSettingsModalId} />
 		</>
+	);
+}
+
+function FileViewSettingsModal(prop: { modalId: string }) {
+	const displayModeRadioBtnName = "file-view-display-mode";
+	const sortParamRadioBtnName = "file-view-sort-param";
+	const sortDirectionRadioBtnName = "file-view-sort-direction";
+
+	function DisplayModeRadioBtns() {
+		const options = [
+			{ name: "Grid", value: "grid" },
+			{ name: "List", value: "list" },
+			{ name: "Minimal", value: "minimal" },
+			{ name: "Wrapped", value: "wrapped" },
+		] as const satisfies ReadonlyArray<{
+			name: Capitalize<FileViewSettings["mode"]>;
+			value: FileViewSettings["mode"];
+		}>;
+
+		return (
+			<div class="flex flex-col gap-2">
+				<div class="font-semibold">Display Mode:</div>
+
+				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
+					<For each={options}>
+						{({ name, value }) => {
+							const isSelected = () => value === fileViewSettings.mode;
+
+							return (
+								<label>
+									{name}
+									<input
+										type="radio"
+										name={displayModeRadioBtnName}
+										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
+										checked={isSelected()}
+										onInput={(_) =>
+											setFileViewSettings(
+												produce((state) => {
+													state.mode = value;
+												}),
+											)
+										}
+									/>
+								</label>
+							);
+						}}
+					</For>
+				</div>
+			</div>
+		);
+	}
+
+	function SortParamRadioBtns() {
+		const options = [
+			{ name: "Date", value: "date" },
+			{ name: "Name", value: "name" },
+			{ name: "Size", value: "size" },
+			{ name: "Type", value: "type" },
+		] as const satisfies ReadonlyArray<{
+			name: Capitalize<FileViewSettings["sorting"]["param"]>;
+			value: FileViewSettings["sorting"]["param"];
+		}>;
+
+		return (
+			<div class="flex flex-col gap-2">
+				<div class="font-semibold">Sorting Mode:</div>
+
+				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
+					<For each={options}>
+						{({ name, value }) => {
+							const isSelected = () => value === fileViewSettings.sorting.param;
+
+							return (
+								<label>
+									{name}
+									<input
+										type="radio"
+										name={sortParamRadioBtnName}
+										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
+										checked={isSelected()}
+										onInput={(_) =>
+											setFileViewSettings(
+												produce((state) => {
+													state.sorting.param = value;
+												}),
+											)
+										}
+									/>
+								</label>
+							);
+						}}
+					</For>
+				</div>
+			</div>
+		);
+	}
+
+	function SortDirectionRadioBtns() {
+		const options = [
+			{ name: "Ascending", value: "asc" },
+			{ name: "Descending", value: "desc" },
+		] as const satisfies ReadonlyArray<{
+			name: string;
+			value: FileViewSettings["sorting"]["order"];
+		}>;
+
+		return (
+			<div class="flex flex-col gap-2">
+				<div class="font-semibold">Sorting Direction:</div>
+
+				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
+					<For each={options}>
+						{({ name, value }) => {
+							const isSelected = () => value === fileViewSettings.sorting.order;
+
+							return (
+								<label>
+									{name}
+									<input
+										type="radio"
+										name={sortDirectionRadioBtnName}
+										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
+										checked={isSelected()}
+										onInput={(_) =>
+											setFileViewSettings(
+												produce((state) => {
+													state.sorting.order = value;
+												}),
+											)
+										}
+									/>
+								</label>
+							);
+						}}
+					</For>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<GenericModal modalId={prop.modalId}>
+			<h3 class="font-bold text-xl mb-4">File View Settings</h3>
+
+			{/* <p class="mb-3">
+				This is where you can change how the files and folders are displayed.
+			</p> */}
+
+			<div class="flex flex-col gap-4">
+				<DisplayModeRadioBtns />
+
+				<SortParamRadioBtns />
+
+				<SortDirectionRadioBtns />
+			</div>
+		</GenericModal>
 	);
 }
