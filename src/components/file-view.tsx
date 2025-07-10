@@ -100,6 +100,9 @@ const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 	defaultFileViewSettings,
 );
 
+/** So I can optionally hide / show some stuff when it makes sense  */
+const isViewingFileHostOnlyArea = () => !!fileViewSettings.pathData.fileHost;
+
 export default function FileView() {
 	const _fetchedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
@@ -379,7 +382,7 @@ function UtilityIcons(prop: {
 			</button>{" "}
 			<button
 				type="button"
-				disabled={!settings().pathData.fileHost}
+				disabled={isViewingFileHostOnlyArea()}
 				onClick={handleRefreshFiles}
 			>
 				<Show when={settings().isRefreshing} fallback={<RefreshIcon />}>
@@ -694,6 +697,44 @@ function OptionsDropdownBtn() {
 	const createFileHostModalId = generateUUID();
 	const fileViewSettingsModalId = generateUUID();
 
+	function FileHostSpecificOptions() {
+		return (
+			<li>
+				<button type="button" onClick={(_) => showModal(createFileHostModalId)}>
+					<HardDriveIcon />
+					Create File Host
+				</button>
+			</li>
+		);
+	}
+
+	function NonFileHostSpecificOptions() {
+		return (
+			<>
+				<li>
+					<button type="button">
+						<UploadFileIcon />
+						Upload File
+					</button>
+				</li>
+
+				<li>
+					<button type="button">
+						<UploadFolderIcon />
+						Upload Folder
+					</button>
+				</li>
+
+				<li>
+					<button type="button">
+						<CreateFolderIcon />
+						Create Folder
+					</button>
+				</li>
+			</>
+		);
+	}
+
 	return (
 		<>
 			<Dropdown
@@ -707,34 +748,13 @@ function OptionsDropdownBtn() {
 					</button>
 				}
 			>
-				<li>
-					<button
-						type="button"
-						onClick={(_) => showModal(createFileHostModalId)}
-					>
-						<HardDriveIcon />
-						Create File Host
-					</button>
-				</li>
+				<Show
+					when={isViewingFileHostOnlyArea()}
+					fallback={<FileHostSpecificOptions />}
+				>
+					<NonFileHostSpecificOptions />
+				</Show>
 
-				<li>
-					<button type="button">
-						<UploadFileIcon />
-						Upload File
-					</button>
-				</li>
-				<li>
-					<button type="button">
-						<UploadFolderIcon />
-						Upload Folder
-					</button>
-				</li>
-				<li>
-					<button type="button">
-						<CreateFolderIcon />
-						Create Folder
-					</button>
-				</li>
 				<li>
 					<button
 						type="button"
