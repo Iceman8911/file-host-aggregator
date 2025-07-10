@@ -16,7 +16,7 @@ import type {
 	UUID,
 } from "~/declarations/types";
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
-import type { MegaSyncFileHost } from "./mega-sync";
+import type { MEGASyncFileHost } from "./mega-sync";
 
 const { hfs } = await import("@humanfs/web");
 const { parse, stringify, stringifyAsync } = await import(
@@ -26,7 +26,7 @@ const { ReactiveMap } = await import("@solid-primitives/map");
 const { default: QuickLRU } = await import("quick-lru");
 
 export type FileHostID = Brand<UUID, "FileHostID">;
-export type FileHostImplementations = MegaSyncFileHost;
+export type FileHostImplementations = MEGASyncFileHost;
 export type FileHostClassProps = ReturnType<FileHostImplementations["export"]>;
 
 export type DirectoryStats = {
@@ -441,7 +441,9 @@ export async function initFileHosts(): Promise<
 			// TODO: Depending on the `.type`, instantiate the appropriate class
 			switch (type) {
 				case gFileHosts.MEGA: {
-					const { MegaSyncFileHost } = await import("./mega-sync");
+					const { MegaSyncFileHost: MEGASyncFileHost } = await import(
+						"./mega-sync"
+					);
 					const instance = await MegaSyncFileHost.init({
 						...props,
 						restore: true,

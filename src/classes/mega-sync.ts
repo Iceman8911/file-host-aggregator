@@ -17,14 +17,14 @@ import type {
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
-const { Storage: MegaSyncStorage, File: MegaFile } = await import("megajs");
+const { Storage: MEGASyncStorage, File: MegaFile } = await import("megajs");
 const USER_AGENT = "FileHostAggregator/0.1";
 
 type AccountInfo = ExtractValueTypeFromPromise<
-	ReturnType<typeof MegaSyncStorage.prototype.getAccountInfo>
+	ReturnType<typeof MEGASyncStorage.prototype.getAccountInfo>
 >;
 
-export class MegaSyncFileHost extends FileHost {
+export class MEGASyncFileHost extends FileHost {
 	type = gFileHosts.MEGA;
 
 	/** Minimum time in milliseconds before the caches are refreshed */
@@ -36,7 +36,7 @@ export class MegaSyncFileHost extends FileHost {
 		public name: string,
 		public email: string,
 		public password: string,
-		private _storage: typeof MegaSyncStorage.prototype | null,
+		private _storage: typeof MEGASyncStorage.prototype | null,
 	) {
 		super(name);
 	}
@@ -49,11 +49,11 @@ export class MegaSyncFileHost extends FileHost {
 
 	/** @throws if a stable internet connection cannot be established */
 	private async _initMEGAStorage(
-		...args: ConstructorParameters<typeof MegaSyncStorage>
+		...args: ConstructorParameters<typeof MEGASyncStorage>
 	) {
 		gThrowIfNoInternet();
 
-		this._storage = await new MegaSyncStorage(...args).ready;
+		this._storage = await new MEGASyncStorage(...args).ready;
 
 		await this.downloadFiles();
 
@@ -76,13 +76,13 @@ export class MegaSyncFileHost extends FileHost {
 	static override async init(
 		arg:
 			| { name: string; email: string; password: string; restore: false }
-			| (ClassPropsOnly<MegaSyncFileHost> & {
+			| (ClassPropsOnly<MEGASyncFileHost> & {
 					/** If true, typescript will know that the object props should overwrite the instance's */
 					restore: true;
 			  }),
 	) {
 		const { email, name, password } = arg;
-		const instance = new MegaSyncFileHost(name, email, password, null);
+		const instance = new MEGASyncFileHost(name, email, password, null);
 
 		// Loop through and restore the props
 		if (arg.restore) {
@@ -165,7 +165,7 @@ export class MegaSyncFileHost extends FileHost {
 		try {
 			const fileFromUrl = MegaFile.fromURL(url.toString());
 			const possibleBlob =
-				await MegaSyncFileHost._downloadFileContent(fileFromUrl);
+				await MEGASyncFileHost._downloadFileContent(fileFromUrl);
 
 			if (!possibleBlob) throw Error("File unavailable");
 
@@ -196,7 +196,7 @@ export class MegaSyncFileHost extends FileHost {
 			if (!ref.directory) {
 				await FileHostFile.init({
 					dateCreated: new Date(ref.createdAt),
-					fileData: await MegaSyncFileHost._downloadFileContent(
+					fileData: await MEGASyncFileHost._downloadFileContent(
 						ref,
 						getMetadataOnly,
 					),
@@ -248,7 +248,7 @@ export class MegaSyncFileHost extends FileHost {
 				]).forEach(async ({ file, relativePath }) => {
 					await FileHostFile.init({
 						dateCreated: new Date(file.createdAt),
-						fileData: await MegaSyncFileHost._downloadFileContent(
+						fileData: await MEGASyncFileHost._downloadFileContent(
 							file,
 							getMetadataOnly,
 						),
@@ -292,7 +292,7 @@ export class MegaSyncFileHost extends FileHost {
 		if (
 			accountInfo &&
 			(Date.now() - accountInfo.cachedOn.getTime() <
-				MegaSyncFileHost._refreshCacheIn ||
+				MEGASyncFileHost._refreshCacheIn ||
 				!(await gIsUserConnectedToInternet()))
 		)
 			return accountInfo.info;
