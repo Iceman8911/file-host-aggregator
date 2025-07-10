@@ -31,6 +31,7 @@ import {
 	type JSX,
 	Match,
 	on,
+	onMount,
 	Show,
 	Suspense,
 	Switch,
@@ -104,6 +105,22 @@ const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 const isViewingFileHostOnlyArea = () => !fileViewSettings.pathData.fileHost;
 
 export default function FileView() {
+	const fileHostArray = () => Array.from(FileHost.collection.values());
+	onMount(async () => {
+		/** Loading up the file hosts' root would take roughly 600ms ~ 3000ms per host so it'll be best to cache it beforehand */
+		const cacheFileHostRootContents = async () => {
+			const promises = fileHostArray().map((host) =>
+				host.getDirContents(
+					[host.root(), ROOT_PATH].flat() as AbsoluteDirectoryPath,
+				),
+			);
+
+			return await Promise.all(promises);
+		};
+
+		await cacheFileHostRootContents();
+	});
+
 	const _fetchedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
 	>(() => {
@@ -119,7 +136,7 @@ export default function FileView() {
 			);
 		}
 
-		return Promise.resolve(Array.from(FileHost.collection.values()));
+		return Promise.resolve(fileHostArray());
 	});
 
 	const sortingData = () => fileViewSettings.sorting;
@@ -250,7 +267,7 @@ export default function FileView() {
 				<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
 					<Suspense fallback={<LoadingSpinner />}>
 						<ListOfFilesAndFoldersAndFileHosts
-							list={displayedFilesOrFileHosts()}
+							list={displayedFilesOrFileHosts.latest}
 							settingsSetter={setFileViewSettings}
 						/>
 					</Suspense>

@@ -217,7 +217,8 @@ export abstract class FileHost {
 		this._dirContentCache.clear();
 	}
 
-	/**
+	/** Caches the results
+	 *
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(
