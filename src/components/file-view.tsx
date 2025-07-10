@@ -101,7 +101,7 @@ const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 );
 
 /** So I can optionally hide / show some stuff when it makes sense  */
-const isViewingFileHostOnlyArea = () => !!fileViewSettings.pathData.fileHost;
+const isViewingFileHostOnlyArea = () => !fileViewSettings.pathData.fileHost;
 
 export default function FileView() {
 	const _fetchedFilesOrFileHosts = createMemo<
@@ -749,7 +749,7 @@ function OptionsDropdownBtn() {
 				}
 			>
 				<Show
-					when={isViewingFileHostOnlyArea()}
+					when={!isViewingFileHostOnlyArea()}
 					fallback={<FileHostSpecificOptions />}
 				>
 					<NonFileHostSpecificOptions />
