@@ -702,7 +702,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 											<Thumbnail data={val} />
 										</div>
 
-										<p class="font-bold break-all h-16 overflow-hidden text-ellipsis w-full">
+										<p class="font-bold [word-break:auto-phrase] h-16 overflow-hidden text-ellipsis w-full">
 											{name}
 										</p>
 
