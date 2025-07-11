@@ -46,6 +46,7 @@ import {
 	type FileOrDirectoryOrFileHost,
 	FileType,
 } from "~/classes/file-host";
+import { quickSort } from "~/declarations/async-quick-sort";
 import { generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type {
@@ -158,7 +159,6 @@ export default function FileView() {
 				const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
 				if (!originalFilesOrFileHosts) return [];
 
-				const { quickSort } = await import("~/declarations/async-quick-sort");
 				//@ts-expect-error Yeah, I messed up the types, but it works :D
 				const sorted: FilesOrDirectoriesOrFileHosts = await quickSort<
 					FileOrDirectory | FileHostImplementations

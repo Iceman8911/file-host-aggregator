@@ -1,3 +1,4 @@
+import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { gFileHosts } from "~/declarations/enums";
 import {
@@ -16,7 +17,6 @@ import type {
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
-const { hfs } = await import("@humanfs/web");
 const { Storage: MEGASyncStorage, File: MegaFile } = await import("megajs");
 const USER_AGENT = "FileHostAggregator/0.1";
 const MEGA_CONNECTION_ERROR_MESSAGE =
