@@ -81,7 +81,7 @@ type FilesOrDirectoriesOrFileHosts =
 type FileViewSettings = {
 	iconSize: "XS" | "S" | "M" | "L" | "XL";
 	/** How the icons / file buttons will be displayed */
-	mode: "grid-1" | "grid-2" | "list" | "wrapped" | "minimal";
+	mode: "grid-1" | "grid-2" | "list" | "minimal" | "columned";
 	/** This is used to determine what files / filehosts should be shown */
 	pathData: FilePathTracker;
 	/** Whether the file host(s) data is currently being refreshed */
@@ -800,14 +800,17 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	}
 
-	function WrappedView() {
+	function ColumnedView() {
 		return (
-			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+			<div class="col-[1_/_3] grid grid-cols-1 auto-rows-[4.5rem] gap-2 md:gap-4 p-4 select-none overflow-y-auto">
 				<Suspense fallback={<LoadingSpinner />}>
 					<For each={prop.list}>
 						{(val) => {
-							const name =
-								val instanceof FileHostFile ? val.name(true) : val.name;
+							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
+
+							const name = data.name;
+							const date = data.dateCreated.toUTCString();
+							const size = createAsync(() => Promise.resolve(data.size));
 
 							return (
 								<CustomContextMenu
@@ -816,19 +819,27 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								>
 									<button
 										type="button"
-										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										class="relative group px-2 grid grid-cols-[15%_42.5%_15%_25%] items-center size-full aspect-square btn btn-primary btn-soft md:text-lg"
 										title={name}
 										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
 									>
-										<div class="relative size-fit *:first:size-16">
+										<div class="relative size-fit *:first:size-12 md:*:first:size-16">
 											<Thumbnail data={val} />
 										</div>
 
-										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+										<p class="text-left text-sm font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
 											{name}
 										</p>
 
-										<SpaceUsedPercentageRadialBar data={val} />
+										<p class="text-left text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
+											<Suspense fallback={<LoadingSpinner />}>
+												{size.latest?.parsed}
+											</Suspense>
+										</p>
+
+										<p class="text-right text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{date}
+										</p>
 									</button>
 								</CustomContextMenu>
 							);
@@ -858,8 +869,8 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					<MinimalView />
 				</Match>
 
-				<Match when={fileViewSettings.mode === "wrapped"}>
-					<WrappedView />
+				<Match when={fileViewSettings.mode === "columned"}>
+					<ColumnedView />
 				</Match>
 			</Switch>
 
@@ -996,8 +1007,8 @@ function FileViewSettingsModal(prop: { modalId: string }) {
 			{ name: "Grid-1", value: "grid-1" },
 			{ name: "Grid-2", value: "grid-2" },
 			{ name: "List", value: "list" },
+			{ name: "Columned", value: "columned" },
 			{ name: "Minimal", value: "minimal" },
-			{ name: "Wrapped", value: "wrapped" },
 		] as const satisfies ReadonlyArray<{
 			name: Capitalize<FileViewSettings["mode"]>;
 			value: FileViewSettings["mode"];
