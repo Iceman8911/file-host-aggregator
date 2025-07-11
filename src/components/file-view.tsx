@@ -81,7 +81,7 @@ type FilesOrDirectoriesOrFileHosts =
 type FileViewSettings = {
 	iconSize: "XS" | "S" | "M" | "L" | "XL";
 	/** How the icons / file buttons will be displayed */
-	mode: "grid" | "list" | "wrapped" | "minimal";
+	mode: "grid-1" | "grid-2" | "list" | "wrapped" | "minimal";
 	/** This is used to determine what files / filehosts should be shown */
 	pathData: FilePathTracker;
 	/** Whether the file host(s) data is currently being refreshed */
@@ -93,7 +93,7 @@ type FileViewSettings = {
 const defaultFileViewSettings: Readonly<FileViewSettings> = {
 	iconSize: "M",
 	isRefreshing: false,
-	mode: "grid",
+	mode: "grid-1",
 	pathData: { fileHost: null, relativePath: ROOT_PATH },
 	// Sort alpabetically by default
 	sorting: { order: "asc", param: "name" },
@@ -639,7 +639,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	}
 
-	function GridView() {
+	function Grid1View() {
 		return (
 			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
 				<Suspense fallback={<LoadingSpinner />}>
@@ -655,7 +655,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								>
 									<button
 										type="button"
-										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										class="relative group flex flex-col justify-center items-center w-22 md:w-27 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
 										title={name}
 										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
 									>
@@ -664,6 +664,45 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 										</div>
 
 										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{name}
+										</p>
+
+										<SpaceUsedPercentageRadialBar data={val} />
+									</button>
+								</CustomContextMenu>
+							);
+						}}
+					</For>
+				</Suspense>
+			</div>
+		);
+	}
+
+	function Grid2View() {
+		return (
+			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+				<Suspense fallback={<LoadingSpinner />}>
+					<For each={prop.list}>
+						{(val) => {
+							const name =
+								gGetCommonPropsFromFileOrFileHostOrDirectory(val).name;
+
+							return (
+								<CustomContextMenu
+									closeOnClick={true}
+									contextMenu={<ContextMenu data={val} />}
+								>
+									<button
+										type="button"
+										class="relative group flex flex-col justify-center items-center w-22 md:w-27 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										title={name}
+										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
+									>
+										<div class="relative size-fit *:first:size-16">
+											<Thumbnail data={val} />
+										</div>
+
+										<p class="font-bold break-all h-16 overflow-hidden text-ellipsis w-full">
 											{name}
 										</p>
 
@@ -809,8 +848,12 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 	return (
 		<>
 			<Switch>
-				<Match when={fileViewSettings.mode === "grid"}>
-					<GridView />
+				<Match when={fileViewSettings.mode === "grid-1"}>
+					<Grid1View />
+				</Match>
+
+				<Match when={fileViewSettings.mode === "grid-2"}>
+					<Grid2View />
 				</Match>
 
 				<Match when={fileViewSettings.mode === "list"}>
@@ -956,7 +999,8 @@ function FileViewSettingsModal(prop: { modalId: string }) {
 
 	function DisplayModeRadioBtns() {
 		const options = [
-			{ name: "Grid", value: "grid" },
+			{ name: "Grid-1", value: "grid-1" },
+			{ name: "Grid-2", value: "grid-2" },
 			{ name: "List", value: "list" },
 			{ name: "Minimal", value: "minimal" },
 			{ name: "Wrapped", value: "wrapped" },
