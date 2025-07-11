@@ -1,4 +1,7 @@
+import { hfs } from "@humanfs/web";
+import { trackStore } from "@solid-primitives/deep";
 import { createAsync } from "@solidjs/router";
+import { parse, stringify } from "@worker-tools/structured-json";
 import CloudIcon from "lucide-solid/icons/cloud";
 import CopyIcon from "lucide-solid/icons/copy";
 import DownloadIcon from "lucide-solid/icons/download";
@@ -36,11 +39,17 @@ import {
 	Suspense,
 	Switch,
 } from "solid-js";
-import { createStore, produce, type SetStoreFunction } from "solid-js/store";
+import {
+	createStore,
+	produce,
+	type SetStoreFunction,
+	unwrap,
+} from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import {
 	FileHost,
 	FileHostFile,
+	type FileHostID,
 	type FileHostImplementations,
 	type FileOrDirectory,
 	type FileOrDirectoryOrFileHost,
@@ -53,6 +62,7 @@ import { gFileHostIcons } from "~/declarations/icons";
 import type {
 	AbsoluteDirectoryPath,
 	RelativeDirectoryPath,
+	UUID,
 } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
@@ -103,13 +113,62 @@ const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
 	defaultFileViewSettings,
 );
 
+type SerializableFilePathTracker = FilePathTracker & {
+	fileHost: FileHostID | null;
+};
+type SerializableFileViewSettings = FileViewSettings & {
+	pathData: SerializableFilePathTracker;
+};
+const FILE_VIEW_SETTINGS_SAVE_PATH = "settings/file-view-settings.json";
+
+const serializeAndSaveFileViewSettings = async () => {
+	const clone = { ...unwrap(fileViewSettings) };
+	const serializableClone: SerializableFileViewSettings = {
+		...clone,
+		pathData: {
+			...clone.pathData,
+			fileHost: clone.pathData.fileHost?.id ?? null,
+		} as SerializableFilePathTracker,
+	};
+
+	await hfs.write(FILE_VIEW_SETTINGS_SAVE_PATH, stringify(serializableClone));
+	return serializableClone;
+};
+
+const deserializeFileViewSettings = async () => {
+	const fileContent = await hfs.text(FILE_VIEW_SETTINGS_SAVE_PATH);
+	if (!fileContent) return;
+
+	const parsedSettings: SerializableFileViewSettings = parse(fileContent);
+
+	// Convert the fileHost ID to the actual FileHost instance
+	const fileHost =
+		parsedSettings.pathData.fileHost !== null
+			? (FileHost.collection.get(parsedSettings.pathData.fileHost) ?? null)
+			: null;
+
+	const settingsToRestore: FileViewSettings = {
+		...parsedSettings,
+		pathData: {
+			...parsedSettings.pathData,
+			fileHost,
+			relativePath: parsedSettings.pathData.relativePath,
+		},
+	};
+
+	setFileViewSettings(settingsToRestore);
+
+	return settingsToRestore;
+};
+
 /** So I can optionally hide / show some stuff when it makes sense  */
 const isViewingFileHostOnlyArea = () => !fileViewSettings.pathData.fileHost;
 
 export default function FileView() {
 	const fileHostArray = () => Array.from(FileHost.collection.values());
+
+	// Loading up the file hosts' root would take roughly 600ms ~ 3000ms per host so it'll be best to cache it beforehand
 	onMount(async () => {
-		/** Loading up the file hosts' root would take roughly 600ms ~ 3000ms per host so it'll be best to cache it beforehand */
 		const cacheFileHostRootContents = async () => {
 			const promises = fileHostArray().map((host) =>
 				host.getDirContents(
@@ -122,6 +181,22 @@ export default function FileView() {
 
 		await cacheFileHostRootContents();
 	});
+
+	// Retrieve the file view settings from the OPFS
+	onMount(async () => {
+		await deserializeFileViewSettings();
+	});
+
+	// For saving changes to the file view settings
+	createEffect(
+		on(
+		// To track all changes in the store
+			() => trackStore(fileViewSettings),
+			() => {
+				serializeAndSaveFileViewSettings();
+			},
+		),
+	);
 
 	const _fetchedFilesOrFileHosts = createMemo<
 		Promise<FilesOrDirectoriesOrFileHosts>
