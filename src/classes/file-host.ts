@@ -206,6 +206,24 @@ export abstract class FileHost {
 		return (await Promise.all(filePromises)).filter((val) => val != null);
 	}
 
+	/** Returns all the directories present in the local filesystem */
+	async getAllDirectories(): Promise<DirectoryStats[]> {
+		const dirPromises: Promise<DirectoryStats | null>[] = [];
+		const root = this.root();
+
+		for await (const entry of hfs.walk(convertPathToString(root), {
+			entryFilter: (entry) => entry.isDirectory,
+		})) {
+			dirPromises.push(
+				this.getDirectoryStats(
+					[root, entry.path.split("/")].flat() as AbsoluteDirectoryPath,
+				),
+			);
+		}
+
+		return (await Promise.all(dirPromises)).filter((val) => val != null);
+	}
+
 	/** Caches the results of `.getDirContents()` */
 	private _dirContentCache = new QuickLRU<string, FileOrDirectory[] | null>(
 		FileHost._cacheConfig,
