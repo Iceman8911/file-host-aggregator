@@ -773,8 +773,8 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				<Suspense fallback={<LoadingSpinner />}>
 					<For each={prop.list}>
 						{(val) => {
-							const name =
-								val instanceof FileHostFile ? val.name(true) : val.name;
+							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
+							const name = data.name;
 
 							return (
 								<CustomContextMenu
@@ -783,19 +783,13 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								>
 									<button
 										type="button"
-										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										class="relative group flex flex-col justify-center items-center w-30 lg:w-35 h-fit aspect-video btn btn-ghost text-primary p-0 text-sm"
 										title={name}
 										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
 									>
-										<div class="relative size-fit *:first:size-16">
-											<Thumbnail data={val} />
-										</div>
-
-										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+										<p class="font-bold overflow-clip text-ellipsis [word-break:auto-phrase] size-full">
 											{name}
 										</p>
-
-										<SpaceUsedPercentageRadialBar data={val} />
 									</button>
 								</CustomContextMenu>
 							);
