@@ -45,6 +45,7 @@ import {
 	type FileOrDirectory,
 	type FileOrDirectoryOrFileHost,
 	FileType,
+	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
 import { quickSort } from "~/declarations/async-quick-sort";
 import { generateUUID } from "~/declarations/functions";
@@ -264,14 +265,10 @@ export default function FileView() {
 				/>
 
 				{/* Folder/File view */}
-				<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-					<Suspense fallback={<LoadingSpinner />}>
-						<ListOfFilesAndFoldersAndFileHosts
-							list={displayedFilesOrFileHosts.latest}
-							settingsSetter={setFileViewSettings}
-						/>
-					</Suspense>
-				</div>
+				<ListOfFilesAndFoldersAndFileHosts
+					list={displayedFilesOrFileHosts.latest}
+					settingsSetter={setFileViewSettings}
+				/>
 			</div>
 
 			{/* Option Dropdown Btn */}
@@ -642,37 +639,192 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 		);
 	}
 
+	function GridView() {
+		return (
+			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+				<Suspense fallback={<LoadingSpinner />}>
+					<For each={prop.list}>
+						{(val) => {
+							const name =
+								gGetCommonPropsFromFileOrFileHostOrDirectory(val).name;
+
+							return (
+								<CustomContextMenu
+									closeOnClick={true}
+									contextMenu={<ContextMenu data={val} />}
+								>
+									<button
+										type="button"
+										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										title={name}
+										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
+									>
+										<div class="relative size-fit *:first:size-16">
+											<Thumbnail data={val} />
+										</div>
+
+										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{name}
+										</p>
+
+										<SpaceUsedPercentageRadialBar data={val} />
+									</button>
+								</CustomContextMenu>
+							);
+						}}
+					</For>
+				</Suspense>
+			</div>
+		);
+	}
+
+	function ListView() {
+		return (
+			<div class="col-[1_/_3] grid grid-cols-1 auto-rows-[4.5rem] gap-2 md:gap-4 p-4 select-none overflow-y-auto">
+				<Suspense fallback={<LoadingSpinner />}>
+					<For each={prop.list}>
+						{(val) => {
+							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
+
+							const name = data.name;
+							const date = data.dateCreated.toUTCString();
+							const size = createAsync(() => Promise.resolve(data.size));
+
+							return (
+								<CustomContextMenu
+									closeOnClick={true}
+									contextMenu={<ContextMenu data={val} />}
+								>
+									<button
+										type="button"
+										class="relative group px-2 grid grid-cols-[minmax(4rem,12.5%)_1fr_minmax(4rem,0.75fr)] grid-rows-[1.5fr_1fr] items-center size-full aspect-square btn btn-primary btn-soft md:text-lg"
+										title={name}
+										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
+									>
+										<div class="relative size-fit row-span-2 *:first:size-16">
+											<Thumbnail data={val} />
+										</div>
+
+										<p class="col-[2/4] text-left font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{name}
+										</p>
+
+										<p class="row-[2/3] col-[2/3] text-left text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
+											<Suspense fallback={<LoadingSpinner />}>
+												{size.latest?.parsed}
+											</Suspense>
+										</p>
+
+										<p class="row-[2/3] col-[3/4] text-right text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{date}
+										</p>
+									</button>
+								</CustomContextMenu>
+							);
+						}}
+					</For>
+				</Suspense>
+			</div>
+		);
+	}
+
+	function MinimalView() {
+		return (
+			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+				<Suspense fallback={<LoadingSpinner />}>
+					<For each={prop.list}>
+						{(val) => {
+							const name =
+								val instanceof FileHostFile ? val.name(true) : val.name;
+
+							return (
+								<CustomContextMenu
+									closeOnClick={true}
+									contextMenu={<ContextMenu data={val} />}
+								>
+									<button
+										type="button"
+										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										title={name}
+										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
+									>
+										<div class="relative size-fit *:first:size-16">
+											<Thumbnail data={val} />
+										</div>
+
+										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{name}
+										</p>
+
+										<SpaceUsedPercentageRadialBar data={val} />
+									</button>
+								</CustomContextMenu>
+							);
+						}}
+					</For>
+				</Suspense>
+			</div>
+		);
+	}
+
+	function WrappedView() {
+		return (
+			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
+				<Suspense fallback={<LoadingSpinner />}>
+					<For each={prop.list}>
+						{(val) => {
+							const name =
+								val instanceof FileHostFile ? val.name(true) : val.name;
+
+							return (
+								<CustomContextMenu
+									closeOnClick={true}
+									contextMenu={<ContextMenu data={val} />}
+								>
+									<button
+										type="button"
+										class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
+										title={name}
+										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
+									>
+										<div class="relative size-fit *:first:size-16">
+											<Thumbnail data={val} />
+										</div>
+
+										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+											{name}
+										</p>
+
+										<SpaceUsedPercentageRadialBar data={val} />
+									</button>
+								</CustomContextMenu>
+							);
+						}}
+					</For>
+				</Suspense>
+			</div>
+		);
+	}
+
 	return (
 		<>
-			<For each={prop.list}>
-				{(val) => {
-					const name = val instanceof FileHostFile ? val.name(true) : val.name;
+			<Switch>
+				<Match when={fileViewSettings.mode === "grid"}>
+					<GridView />
+				</Match>
 
-					return (
-						<CustomContextMenu
-							closeOnClick={true}
-							contextMenu={<ContextMenu data={val} />}
-						>
-							<button
-								type="button"
-								class="relative group flex flex-col justify-center items-center w-20 md:w-25 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
-								title={name}
-								onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-							>
-								<div class="relative size-fit *:first:size-16">
-									<Thumbnail data={val} />
-								</div>
+				<Match when={fileViewSettings.mode === "list"}>
+					<ListView />
+				</Match>
 
-								<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
-									{name}
-								</p>
+				<Match when={fileViewSettings.mode === "minimal"}>
+					<MinimalView />
+				</Match>
 
-								<SpaceUsedPercentageRadialBar data={val} />
-							</button>
-						</CustomContextMenu>
-					);
-				}}
-			</For>
+				<Match when={fileViewSettings.mode === "wrapped"}>
+					<WrappedView />
+				</Match>
+			</Switch>
 
 			{/* Dialogs */}
 			<Show when={fileDetailsDialogData.data}>
