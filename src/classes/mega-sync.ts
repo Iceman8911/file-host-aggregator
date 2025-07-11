@@ -263,7 +263,7 @@ export class MEGASyncFileHost extends FileHost {
 
 		await fileToDelete.delete(permanent);
 		await hfs.delete(
-			convertPathToString(this._getAbsolutePathFromRelativePath(file)),
+			convertPathToString(this.getAbsolutePathFromRelativePath(file)),
 		);
 		this.clearDirContentCache();
 		this.clearDirectoryStatsCache();
@@ -281,7 +281,7 @@ export class MEGASyncFileHost extends FileHost {
 
 		await directoryToDelete.delete(permanent);
 		await hfs.delete(
-			convertPathToString(this._getAbsolutePathFromRelativePath(directory)),
+			convertPathToString(this.getAbsolutePathFromRelativePath(directory)),
 		);
 		this.clearDirContentCache();
 		this.clearDirectoryStatsCache();

@@ -4,6 +4,7 @@ import {
 	FileHost,
 	FileHostFile,
 	type FileOrDirectoryOrFileHost,
+	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
 import { convertPathToString } from "~/declarations/functions";
 import LoadingSpinner from "../loading-spinner";
@@ -24,44 +25,33 @@ export default function FileDetails(prop: {
 	file: FileOrDirectoryOrFileHost;
 	modalId: string;
 }) {
-	/** To convert a number in bytes to kb, mb, gb */
-	const convertBytes = (bytes: number) => {
-		if (bytes < 1024) return `${bytes} bytes` as const;
-		else if (bytes < 1024 * 1024)
-			return `${(bytes / 1024).toFixed(2)} KB` as const;
-		else if (bytes < 1024 * 1024 * 1024)
-			return `${(bytes / (1024 * 1024)).toFixed(2)} MB` as const;
-		else return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB` as const;
-	};
-
 	const data = createMemo<Promise<FileDetailsProps>>(async () => {
-		const data = prop.file;
+		const data = gGetCommonPropsFromFileOrFileHostOrDirectory(prop.file);
 
-		if (data instanceof FileHost) {
+		if (data.type === "file host") {
 			return {
 				dateCreated: data.dateCreated,
 				name: data.name,
-				path: "/",
-				size: convertBytes(await data.spaceUsed()),
+				path: data.path.legiblePath,
+				size: (await data.size).parsed,
 				type: "File Host",
 				url: null,
 			};
-		} else if (data instanceof FileHostFile) {
+		} else if (data.type === "file") {
 			return {
 				dateCreated: data.dateCreated,
-				name: data.name(true),
-				path: convertPathToString(data.relativePath),
-				size: convertBytes(data.size),
+				name: data.name,
+				path: data.path.legiblePath,
+				size: data.size.parsed,
 				type: "File",
 				url: data.url,
 			};
 		} else {
 			return {
-				dateCreated: data.dateEdited,
+				dateCreated: data.dateCreated,
 				name: data.name,
-				// TODO: add a central function for getting relative paths instead of this hacky workaround that may break if I change the logic in the future
-				path: convertPathToString(data.path.slice(2)),
-				size: convertBytes(data.size),
+				path: data.path.legiblePath,
+				size: data.size.parsed,
 				type: "Folder",
 				url: null,
 			};
@@ -108,7 +98,8 @@ export default function FileDetails(prop: {
 									</span>
 
 									<span>
-										<strong>Path:</strong> {val().path}
+										<strong>Path:</strong>{" "}
+										<span class="text-secondary">{val().path}</span>
 									</span>
 
 									<span>
