@@ -80,6 +80,7 @@ export abstract class FileHost {
 	 *
 	 * Make sure that the instance is properly initialized before fetching files.
 	 */
+	// biome-ignore lint: For typescript to be happy
 	static init(...args: unknown[]): Promise<FileHostImplementations> {
 		throw new Error("Method not implemented! Use derived class");
 	}

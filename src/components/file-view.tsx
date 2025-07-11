@@ -62,7 +62,6 @@ import { gFileHostIcons } from "~/declarations/icons";
 import type {
 	AbsoluteDirectoryPath,
 	RelativeDirectoryPath,
-	UUID,
 } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
@@ -142,7 +141,7 @@ export default function FileView() {
 	};
 	const FILE_VIEW_SETTINGS_SAVE_PATH = "settings/file-view-settings.json";
 
-	async function serializeAndSaveFileViewSettings () {
+	async function serializeAndSaveFileViewSettings() {
 		const clone = { ...unwrap(fileViewSettings) };
 		const serializableClone: SerializableFileViewSettings = {
 			...clone,
@@ -154,9 +153,9 @@ export default function FileView() {
 
 		await hfs.write(FILE_VIEW_SETTINGS_SAVE_PATH, stringify(serializableClone));
 		return serializableClone;
-	};
+	}
 
-	async function deserializeFileViewSettings()  {
+	async function deserializeFileViewSettings() {
 		const fileContent = await hfs.text(FILE_VIEW_SETTINGS_SAVE_PATH);
 		if (!fileContent) return;
 
@@ -180,7 +179,7 @@ export default function FileView() {
 		setFileViewSettings(settingsToRestore);
 
 		return settingsToRestore;
-	};
+	}
 
 	// Retrieve the file view settings from the OPFS
 	onMount(async () => {

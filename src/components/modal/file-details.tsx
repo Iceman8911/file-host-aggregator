@@ -1,12 +1,9 @@
 import { createAsync } from "@solidjs/router";
 import { createMemo, Show, Suspense } from "solid-js";
 import {
-	FileHost,
-	FileHostFile,
 	type FileOrDirectoryOrFileHost,
 	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
-import { convertPathToString } from "~/declarations/functions";
 import LoadingSpinner from "../loading-spinner";
 import { GenericModal } from "./modal";
 
