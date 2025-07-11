@@ -736,15 +736,15 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								>
 									<button
 										type="button"
-										class="relative group px-2 grid grid-cols-[minmax(4rem,12.5%)_1fr_minmax(4rem,0.75fr)] grid-rows-[1.5fr_1fr] items-center size-full aspect-square btn btn-primary btn-soft md:text-lg"
+										class="relative group px-2 grid grid-cols-[20%_42.5%_35%] sm:grid-cols-[15%_47.5%_35%] grid-rows-[1.5fr_1fr] items-center size-full aspect-square btn btn-primary btn-soft"
 										title={name}
 										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
 									>
-										<div class="relative size-fit row-span-2 *:first:size-16">
+										<div class="relative size-fit row-span-2 *:first:size-12 md:*:first:size-16">
 											<Thumbnail data={val} />
 										</div>
 
-										<p class="col-[2/4] text-left font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
+										<p class="col-[2/4] text-left sm:text-lg font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
 											{name}
 										</p>
 
