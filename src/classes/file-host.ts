@@ -107,6 +107,12 @@ export abstract class FileHost {
 		return [...this.root(), ...filePath];
 	}
 
+	static getFileHostFromAbsolutePath(
+		path: AbsoluteFileOrDirectoryPath,
+	): FileHostImplementations | null {
+		return FileHost.collection.get(path[1]) ?? null;
+	}
+
 	protected static _getDirectoryFromFilePath(
 		filePath: AbsoluteFilePath,
 	): AbsoluteDirectoryPath;
