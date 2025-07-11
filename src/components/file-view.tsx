@@ -280,41 +280,41 @@ export default function FileView() {
 	);
 }
 
+const handleNavigateToFileHostsView = () => {
+	setFileViewSettings(
+		produce((state) => {
+			state.pathData.fileHost = null;
+		}),
+	);
+};
+
+const handleNavigateToFileHostRoot = () => {
+	setFileViewSettings(
+		produce((state) => {
+			state.pathData.relativePath = ROOT_PATH;
+		}),
+	);
+};
+
+/**
+ *
+ * @param pathIndex The index of the path to navigate to in the `relativePath` array.
+ */
+const handleNavigateToPath = (pathIndex: number) => {
+	setFileViewSettings(
+		produce((state) => {
+			state.pathData.relativePath = state.pathData.relativePath.slice(
+				0,
+				pathIndex + 1,
+			);
+		}),
+	);
+};
+
 function DirectoryPathBar(prop: {
 	pathData: FilePathTracker;
 	setter: SetStoreFunction<FileViewSettings>;
 }) {
-	const handleNavigateToFileHostsView = () => {
-		prop.setter(
-			produce((state) => {
-				state.pathData.fileHost = null;
-			}),
-		);
-	};
-
-	const handleNavigateToFileHostRoot = () => {
-		prop.setter(
-			produce((state) => {
-				state.pathData.relativePath = ROOT_PATH;
-			}),
-		);
-	};
-
-	/**
-	 *
-	 * @param pathIndex The index of the path to navigate to in the `relativePath` array.
-	 */
-	const handleNavigateToPath = (pathIndex: number) => {
-		prop.setter(
-			produce((state) => {
-				state.pathData.relativePath = state.pathData.relativePath.slice(
-					0,
-					pathIndex + 1,
-				);
-			}),
-		);
-	};
-
 	return (
 		<div class="breadcrumbs text-sm sm:text-[1.025rem] px-4 text-primary overflow-y-clip scrollbar-thin select-none">
 			<ul class="*:last:font-bold">
@@ -728,6 +728,13 @@ function OptionsDropdownBtn() {
 	function NonFileHostSpecificOptions() {
 		return (
 			<>
+				<li>
+					<button type="button" onClick={handleNavigateToFileHostsView}>
+						<HardDriveIcon />
+						Back To File Hosts
+					</button>
+				</li>
+
 				<li>
 					<button type="button">
 						<UploadFileIcon />
