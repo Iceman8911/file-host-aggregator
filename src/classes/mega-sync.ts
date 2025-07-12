@@ -1,5 +1,6 @@
 import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
+import { Storage as MEGASyncStorage, File as MegaFile } from "megajs";
 import { gFileHosts } from "~/declarations/enums";
 import {
 	convertPathToString,
@@ -17,7 +18,6 @@ import type {
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
 import { FileHost, FileHostFile } from "./file-host";
 
-const { Storage: MEGASyncStorage, File: MegaFile } = await import("megajs");
 const USER_AGENT = "FileHostAggregator/0.1";
 const MEGA_CONNECTION_ERROR_MESSAGE =
 	"Unable to connect to MEGA Sync. Some features may be unavailable";
@@ -134,6 +134,7 @@ export class MEGASyncFileHost extends FileHost {
 			const bufferSize = buffer.maxByteLength;
 			const uploadedFile = (await folder.upload(
 				{ name, size: bufferSize },
+				//@ts-expect-error This is actually alright, the type is justed botched
 				new Uint8Array(buffer),
 			).complete) as MutableFile;
 			return {
