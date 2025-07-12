@@ -59,6 +59,7 @@ import {
 import { quickSort } from "~/declarations/async-quick-sort";
 import {
 	convertDateToLegibleString,
+	downloadBlobToDisk,
 	generateUUID,
 } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
@@ -579,9 +580,32 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				<li>
 					<button
 						type="button"
-						onClick={(_) => {
+						onClick={async (_) => {
 							if (prop.data instanceof FileHostFile) {
-								prop.data.downloadFile();
+								prop.data.downloadFileToDisk();
+							} else if (!(prop.data instanceof FileHost)) {
+								const allDirContents =
+									(await FileHost.getFileHostFromAbsolutePath(
+										prop.data.path,
+									)?.getDirContentsRecursively(prop.data.path)) ?? [];
+
+								if (!allDirContents.length) return;
+
+								const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
+
+								for (const possibleFile of allDirContents) {
+									if (possibleFile instanceof FileHostFile) {
+										filesToArchive.push({
+											data: await (await possibleFile.getFile()).arrayBuffer(),
+											path: possibleFile.relativePath,
+										});
+									}
+								}
+
+								const { archiveFiles } = await import("~/lib/fflate-archiving");
+								const zipRes = await archiveFiles(filesToArchive);
+
+								downloadBlobToDisk(zipRes, zipRes.name);
 							}
 						}}
 					>

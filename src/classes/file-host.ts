@@ -7,7 +7,11 @@ import {
 } from "@worker-tools/structured-json";
 import QuickLRU from "quick-lru";
 import { gFileHosts } from "~/declarations/enums";
-import { convertPathToString, generateUUID } from "~/declarations/functions";
+import {
+	convertPathToString,
+	downloadBlobToDisk,
+	generateUUID,
+} from "~/declarations/functions";
 import type {
 	AbsoluteDirectoryPath,
 	AbsoluteFileOrDirectoryPath,
@@ -683,16 +687,11 @@ export class FileHostFile {
 	}
 
 	/** Basically `.getFile()` and then the result is downloaded */
-	async downloadFile(useLatestFromFileHost = false) {
-		const blob = await this.getFile(useLatestFromFileHost);
-
-		const blobUrl = URL.createObjectURL(blob);
-		const link = Object.assign(document.createElement("a"), {
-			download: this.name(true),
-			href: blobUrl,
-		} satisfies Partial<HTMLAnchorElement>);
-		link.click();
-		URL.revokeObjectURL(blobUrl);
+	async downloadFileToDisk(useLatestFromFileHost = false) {
+		downloadBlobToDisk(
+			await this.getFile(useLatestFromFileHost),
+			this.name(true),
+		);
 	}
 
 	get type(): FileType {
