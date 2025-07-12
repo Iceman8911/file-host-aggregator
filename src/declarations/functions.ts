@@ -9,6 +9,7 @@ import type {
 	AnyDirectoryPath,
 	AnyFileOrDirectoryPath,
 	AnyFilePath,
+	FileName,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
@@ -50,8 +51,8 @@ export function convertPathToString(
 	);
 }
 export function convertStringToPath(
-	pathString: string,
-): Readonly<AnyFileOrDirectoryPath> {
+	pathString: Readonly<string>,
+): AnyFileOrDirectoryPath {
 	return pathString.split(pathSeperator);
 }
 
@@ -121,4 +122,10 @@ export function isDirectoryPath(
 	if (!possiblePath.length) return false;
 
 	return !isFilePath(possiblePath);
+}
+
+export function treatStringAsFileName(str: string): FileName {
+	const existingExtension = str.split(FILENAME_SPLIT_REGEX)[1];
+
+	return existingExtension ? (str as FileName) : `${str}.bin`;
 }

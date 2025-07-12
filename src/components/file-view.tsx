@@ -69,6 +69,7 @@ import CustomContextMenu from "./menu/custom-context-menu";
 import CreateFileHostModal from "./modal/create-file-host";
 import FileDetails from "./modal/file-details";
 import { GenericModal, showModal } from "./modal/modal";
+import UploadFileModal from "./modal/upload-file";
 
 type FilePathTracker = {
 	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
@@ -144,7 +145,7 @@ export default function FileView() {
 	async function serializeAndSaveFileViewSettings() {
 		const clone = { ...unwrap(fileViewSettings) };
 		const serializableClone: SerializableFileViewSettings = {
-			...clone,
+      ...clone, isRefreshing: false,
 			pathData: {
 				...clone.pathData,
 				fileHost: clone.pathData.fileHost?.id ?? null,
@@ -987,6 +988,7 @@ function OptionsDropdownBtn() {
 
 	const createFileHostModalId = generateUUID();
 	const fileViewSettingsModalId = generateUUID();
+	const uploadFileModalId = generateUUID();
 
 	function FileHostSpecificOptions() {
 		return (
@@ -1010,7 +1012,7 @@ function OptionsDropdownBtn() {
 				</li>
 
 				<li>
-					<button type="button">
+					<button type="button" onClick={(_) => showModal(uploadFileModalId)}>
 						<UploadFileIcon />
 						Upload File
 					</button>
@@ -1067,6 +1069,14 @@ function OptionsDropdownBtn() {
 			{/* Dialogs */}
 			<CreateFileHostModal modalId={createFileHostModalId} />
 			<FileViewSettingsModal modalId={fileViewSettingsModalId} />
+			<UploadFileModal
+				modalId={uploadFileModalId}
+				defaultDirectory={
+					fileViewSettings.pathData.fileHost?.getAbsolutePathFromRelativePath(
+						fileViewSettings.pathData.relativePath,
+					) ?? null
+				}
+			/>
 		</>
 	);
 }

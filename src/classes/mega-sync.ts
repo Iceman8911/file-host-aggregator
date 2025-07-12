@@ -130,9 +130,11 @@ export class MEGASyncFileHost extends FileHost {
 		try {
 			const _storage = await this._getStorage();
 			const folder = await this._getFolder(path, _storage.root);
+			const buffer = await file.arrayBuffer();
+			const bufferSize = buffer.maxByteLength;
 			const uploadedFile = (await folder.upload(
-				{ name, size: file.size },
-				await file.text(),
+				{ name, size: bufferSize },
+				new Uint8Array(buffer),
 			).complete) as MutableFile;
 			return {
 				state: "success",
