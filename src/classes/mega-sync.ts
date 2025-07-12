@@ -109,9 +109,9 @@ export class MEGASyncFileHost extends FileHost {
 	/** Returns the folder at the specified path on the **server** while auto-creating missing folders if needed */
 	private async _getFolder(
 		path: RelativeDirectoryPath,
-		folderToStartFrom = this._storage?.root,
+		folderToStartFrom?: MutableFile,
 	): Promise<MutableFile> {
-		if (!folderToStartFrom) throw Error("MEGA storage not initialized");
+		if (!folderToStartFrom) folderToStartFrom = (await this._getStorage()).root;
 		if (!path.length) return folderToStartFrom;
 		const [directoryToFindOrCreate, ...restOfDirectoryPath] = path;
 
