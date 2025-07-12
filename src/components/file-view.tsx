@@ -66,6 +66,7 @@ import { gFileHostIcons } from "~/declarations/icons";
 import type {
 	AbsoluteDirectoryPath,
 	RelativeDirectoryPath,
+	RelativeFilePath,
 } from "~/declarations/types";
 import { ROOT_PATH } from "~/declarations/variables";
 import LoadingSpinner from "./loading-spinner";
@@ -592,15 +593,39 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 								if (!allDirContents.length) return;
 
 								const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
+								const filesToArchivePromises: Array<
+									Promise<{ data: ArrayBuffer; path: RelativeFilePath }>
+								> = [];
 
 								for (const possibleFile of allDirContents) {
 									if (possibleFile instanceof FileHostFile) {
-										filesToArchive.push({
-											data: await (await possibleFile.getFile()).arrayBuffer(),
-											path: possibleFile.relativePath,
-										});
+										// Don't individually wait on each request
+										filesToArchivePromises.push(
+											possibleFile.getFile().then((blob) =>
+												blob.arrayBuffer().then((buffer) => {
+													return {
+														data: buffer,
+														path: possibleFile.relativePath,
+													};
+												}),
+											),
+										);
 									}
 								}
+
+								(await Promise.allSettled(filesToArchivePromises)).forEach(
+									(result) => {
+										if (result.status === "fulfilled") {
+											const {
+												value: { data, path },
+											} = result;
+											filesToArchive.push({
+												data,
+												path,
+											});
+										}
+									},
+								);
 
 								const { archiveFiles } = await import("~/lib/fflate-archiving");
 								const zipRes = await archiveFiles(filesToArchive);
