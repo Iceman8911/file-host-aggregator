@@ -4,6 +4,7 @@ import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import { gFileHosts } from "~/declarations/enums";
 import { gFileHostIcons } from "~/declarations/icons";
+import LoadingSpinner from "../loading-spinner";
 import { closeModal, GenericModal } from "./modal";
 
 type FileHostInitData = {
@@ -172,7 +173,7 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 			{/* Loading mode after attempting to initialize a file host */}
 			<Show when={isInitializingFileHost()}>
 				<div class="absolute top-0 left-0 size-full bg-black opacity-50 flex justify-center items-center">
-					<span class="loading loading-spinner loading-xl text-primary"></span>
+					<LoadingSpinner />
 				</div>
 			</Show>
 		</GenericModal>
