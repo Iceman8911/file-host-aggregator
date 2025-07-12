@@ -12,6 +12,7 @@ export function GenericModal(prop: { modalId: string; children: JSX.Element }) {
 						<button
 							type="submit"
 							class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+							aria-label="Close Modal"
 						>
 							✕
 						</button>
