@@ -57,7 +57,7 @@ import {
 	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
 import { quickSort } from "~/declarations/async-quick-sort";
-import { generateUUID } from "~/declarations/functions";
+import { convertDateToLegibleString, generateUUID } from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type {
 	AbsoluteDirectoryPath,
@@ -801,7 +801,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
 
 							const name = data.name;
-							const date = data.dateCreated.toUTCString();
+							const date = convertDateToLegibleString(data.dateCreated);
 							const size = createAsync(() => Promise.resolve(data.size));
 
 							return (
@@ -884,7 +884,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
 
 							const name = data.name;
-							const date = data.dateCreated.toUTCString();
+							const date = convertDateToLegibleString(data.dateCreated);
 							const size = createAsync(() => Promise.resolve(data.size));
 
 							return (

@@ -129,3 +129,7 @@ export function treatStringAsFileName(str: string): FileName {
 
 	return existingExtension ? (str as FileName) : `${str}.bin`;
 }
+
+export function convertDateToLegibleString(date: Date): string {
+	return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+}

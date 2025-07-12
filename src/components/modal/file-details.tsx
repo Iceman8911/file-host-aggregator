@@ -4,6 +4,7 @@ import {
 	type FileOrDirectoryOrFileHost,
 	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
+import { convertDateToLegibleString } from "~/declarations/functions";
 import LoadingSpinner from "../loading-spinner";
 import { GenericModal } from "./modal";
 
@@ -101,7 +102,7 @@ export default function FileDetails(prop: {
 
 									<span>
 										<strong>Date Created:</strong>{" "}
-										{val().dateCreated.toUTCString()}
+										{convertDateToLegibleString(val().dateCreated)}
 									</span>
 								</>
 							)}
