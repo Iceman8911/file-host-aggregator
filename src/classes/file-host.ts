@@ -51,7 +51,7 @@ export type FileOrDirectoryOrFileHost =
 
 export type FileOrDirectory = FileHostFile | DirectoryStats;
 
-const FILE_HOST = "file_host";
+export const FILE_HOST_ROOT = "_file_host";
 const DEFAULT_FILE_EXTENSION = "bin";
 
 /** Every file host (e.g Mega, MediaFire, etc) must implement this.
@@ -83,6 +83,10 @@ export abstract class FileHost {
 	// biome-ignore lint: For typescript to be happy
 	static init(...args: unknown[]): Promise<FileHostImplementations> {
 		throw new Error("Method not implemented! Use derived class");
+	}
+
+	static getInstanceFromId(possibleId: string) {
+		return FileHost.collection.get(possibleId as FileHostID) ?? null;
 	}
 
 	static getRelativePathFromAbsolutePath(
@@ -387,18 +391,18 @@ export abstract class FileHost {
 	 *
 	 * e.g `/file_host/123po12`
 	 */
-	static root(): [typeof FILE_HOST];
-	static root(id: FileHostID): [typeof FILE_HOST, FileHostID];
+	static root(): [typeof FILE_HOST_ROOT];
+	static root(id: FileHostID): [typeof FILE_HOST_ROOT, FileHostID];
 	static root(
 		id: FileHostID,
 		getSaveLocation: true,
-	): [typeof FILE_HOST, `${FileHostID}.${typeof DEFAULT_FILE_EXTENSION}`];
+	): [typeof FILE_HOST_ROOT, `${FileHostID}.${typeof DEFAULT_FILE_EXTENSION}`];
 	static root(id?: FileHostID, getSaveLocation = false) {
-		if (!id) return [FILE_HOST];
+		if (!id) return [FILE_HOST_ROOT];
 
 		return getSaveLocation
-			? [FILE_HOST, `${id}.${DEFAULT_FILE_EXTENSION}`]
-			: [FILE_HOST, id];
+			? [FILE_HOST_ROOT, `${id}.${DEFAULT_FILE_EXTENSION}`]
+			: [FILE_HOST_ROOT, id];
 	}
 
 	/** Returns the directory that contains all files for the filehost.
@@ -498,6 +502,8 @@ export enum FileType {
 	OTHER = "bin",
 }
 
+export const EXTENSION_REGEX = /\.(?!.*\.)/;
+
 /** A representation of a file fetched from a file-host. At first, it only contains the bare metadata but not the actual file. When interacted with, the actual file will be downloaded */
 export class FileHostFile {
 	/** The name of the file, without the extension */
@@ -542,7 +548,7 @@ export class FileHostFile {
 			size,
 		} = args;
 
-		const [name, ext] = argName.split(/\.(?!.*\.)/);
+		const [name, ext] = argName.split(EXTENSION_REGEX);
 		this._name = name;
 		this._ext = ext;
 		this.url = new URL(fileUrl);

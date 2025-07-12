@@ -1,4 +1,18 @@
-import type { AnyFileOrDirectoryPath } from "./types";
+import {
+	FILE_HOST_ROOT,
+	EXTENSION_REGEX as FILENAME_SPLIT_REGEX,
+} from "~/classes/file-host";
+import type {
+	AbsoluteDirectoryPath,
+	AbsoluteFileOrDirectoryPath,
+	AbsoluteFilePath,
+	AnyDirectoryPath,
+	AnyFileOrDirectoryPath,
+	AnyFilePath,
+	RelativeDirectoryPath,
+	RelativeFileOrDirectoryPath,
+	RelativeFilePath,
+} from "./types";
 
 export const generateUUID = <
 	TReturnType = ReturnType<typeof crypto.randomUUID>,
@@ -24,9 +38,87 @@ export async function gThrowIfNoInternet(): Promise<void> {
 }
 
 // For paths
+const pathSeperator = "/";
 const pathCache = new WeakMap<Readonly<AnyFileOrDirectoryPath>, string>();
-export function convertPathToString(path: Readonly<AnyFileOrDirectoryPath>) {
+export function convertPathToString(
+	path: Readonly<AnyFileOrDirectoryPath>,
+): string {
 	return (
-		pathCache.get(path) ?? pathCache.set(path, path.join("/")).get(path) ?? ""
+		pathCache.get(path) ??
+		pathCache.set(path, path.join(pathSeperator)).get(path) ??
+		""
 	);
+}
+export function convertStringToPath(
+	pathString: string,
+): Readonly<AnyFileOrDirectoryPath> {
+	return pathString.split(pathSeperator);
+}
+
+export function isAbsolutePath(
+	possiblePath: Readonly<AnyFilePath>,
+): possiblePath is AbsoluteFilePath;
+export function isAbsolutePath(
+	possiblePath: Readonly<AnyDirectoryPath>,
+): possiblePath is AbsoluteDirectoryPath;
+export function isAbsolutePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AbsoluteFileOrDirectoryPath;
+export function isAbsolutePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AbsoluteFileOrDirectoryPath {
+	if (!possiblePath.length) return false;
+
+	return possiblePath[0] === FILE_HOST_ROOT;
+}
+
+export function isRelativePath(
+	possiblePath: Readonly<AnyFilePath>,
+): possiblePath is RelativeFilePath;
+export function isRelativePath(
+	possiblePath: Readonly<AnyDirectoryPath>,
+): possiblePath is RelativeDirectoryPath;
+export function isRelativePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is RelativeFileOrDirectoryPath;
+export function isRelativePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is RelativeFileOrDirectoryPath {
+	if (!possiblePath.length) return false;
+
+	return !isAbsolutePath(possiblePath);
+}
+
+export function isFilePath(
+	possiblePath: Readonly<AbsoluteFileOrDirectoryPath>,
+): possiblePath is AbsoluteFilePath;
+export function isFilePath(
+	possiblePath: Readonly<RelativeFileOrDirectoryPath>,
+): possiblePath is RelativeFilePath;
+export function isFilePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AnyFilePath;
+export function isFilePath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AnyFilePath {
+	if (!possiblePath.length) return false;
+
+	return !!possiblePath[possiblePath.length - 1].split(FILENAME_SPLIT_REGEX)[1];
+}
+
+export function isDirectoryPath(
+	possiblePath: Readonly<AbsoluteFileOrDirectoryPath>,
+): possiblePath is AbsoluteDirectoryPath;
+export function isDirectoryPath(
+	possiblePath: Readonly<RelativeFileOrDirectoryPath>,
+): possiblePath is RelativeDirectoryPath;
+export function isDirectoryPath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AnyDirectoryPath;
+export function isDirectoryPath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is AnyDirectoryPath {
+	if (!possiblePath.length) return false;
+
+	return !isFilePath(possiblePath);
 }
