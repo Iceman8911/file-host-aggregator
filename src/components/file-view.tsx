@@ -57,7 +57,10 @@ import {
 	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
 import { quickSort } from "~/declarations/async-quick-sort";
-import { convertDateToLegibleString, generateUUID } from "~/declarations/functions";
+import {
+	convertDateToLegibleString,
+	generateUUID,
+} from "~/declarations/functions";
 import { gFileHostIcons } from "~/declarations/icons";
 import type {
 	AbsoluteDirectoryPath,
@@ -145,7 +148,8 @@ export default function FileView() {
 	async function serializeAndSaveFileViewSettings() {
 		const clone = { ...unwrap(fileViewSettings) };
 		const serializableClone: SerializableFileViewSettings = {
-      ...clone, isRefreshing: false,
+			...clone,
+			isRefreshing: false,
 			pathData: {
 				...clone.pathData,
 				fileHost: clone.pathData.fileHost?.id ?? null,
@@ -573,7 +577,14 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				<UniqueOptions />
 
 				<li>
-					<button type="button">
+					<button
+						type="button"
+						onClick={(_) => {
+							if (prop.data instanceof FileHostFile) {
+								prop.data.downloadFile();
+							}
+						}}
+					>
 						<DownloadIcon />
 						Download
 					</button>
