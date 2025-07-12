@@ -1,6 +1,7 @@
 import { createAsync } from "@solidjs/router";
 import { createMemo, Show, Suspense } from "solid-js";
 import {
+	type DirectoryStats,
 	type FileOrDirectoryOrFileHost,
 	gGetCommonPropsFromFileOrFileHostOrDirectory,
 } from "~/classes/file-host";
@@ -16,6 +17,7 @@ type FileDetailsProps = {
 	dateCreated: Date;
 	url: URL | null;
 	type: "File Host" | "Folder" | "File";
+	contentCount: { files: number; folders: number } | null;
 };
 
 /** Displays the relevant data of a given `FileHostFile` of `FileHost` */
@@ -28,6 +30,10 @@ export default function FileDetails(prop: {
 
 		if (data.type === "file host") {
 			return {
+				contentCount: {
+					files: data.contentCount.files,
+					folders: data.contentCount.folders,
+				},
 				dateCreated: data.dateCreated,
 				name: data.name,
 				path: data.path.legiblePath,
@@ -37,6 +43,7 @@ export default function FileDetails(prop: {
 			};
 		} else if (data.type === "file") {
 			return {
+				contentCount: null,
 				dateCreated: data.dateCreated,
 				name: data.name,
 				path: data.path.legiblePath,
@@ -46,6 +53,10 @@ export default function FileDetails(prop: {
 			};
 		} else {
 			return {
+				contentCount: {
+					files: data.contentCount.files,
+					folders: data.contentCount.folders,
+				},
 				dateCreated: data.dateCreated,
 				name: data.name,
 				path: data.path.legiblePath,
@@ -87,6 +98,15 @@ export default function FileDetails(prop: {
 												>
 													{val().toString()}
 												</a>
+											</span>
+										)}
+									</Show>
+
+									<Show when={val().type === "Folder" && val()}>
+										{(val) => (
+											<span>
+												<strong>Contents:</strong>{" "}
+												<span>{`Files (${val().contentCount?.files}). Folders (${val().contentCount?.folders}).`}</span>
 											</span>
 										)}
 									</Show>
