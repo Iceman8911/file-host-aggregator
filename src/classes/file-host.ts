@@ -244,7 +244,7 @@ export abstract class FileHost {
 		this._dirContentCache.clear();
 	}
 
-	/** Caches the results
+	/** Returns all the files and directories in the directory at the path given.
 	 *
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
@@ -310,6 +310,33 @@ export abstract class FileHost {
 		this._dirContentCache.set(parsedPath, actualResult);
 
 		return actualResult;
+	}
+
+	/** Like `.getDirContents` but recursive :p */
+	async getDirContentsRecursively(
+		path: Readonly<AbsoluteDirectoryPath>,
+	): Promise<FileOrDirectory[] | null> {
+		const recursivelyGetDirContents = async (
+			currentPath: Readonly<AbsoluteDirectoryPath>,
+			accumulatedContents: FileOrDirectory[],
+		): Promise<FileOrDirectory[] | null> => {
+			const contents = await this.getDirContents(currentPath);
+
+			if (!contents) return accumulatedContents;
+
+			for (const child of contents) {
+				if (child instanceof FileHostFile) {
+					accumulatedContents.push(child);
+				} else {
+					accumulatedContents.push(child);
+					await recursivelyGetDirContents(child.path, accumulatedContents);
+				}
+			}
+
+			return accumulatedContents;
+		};
+
+		return recursivelyGetDirContents(path, []);
 	}
 
 	private _directoryStatsCache = new QuickLRU<string, DirectoryStats>(
@@ -812,6 +839,7 @@ type CommonData =
 				/** Human-readable path that is the combination of the parent file host name and relative path */
 				legiblePath: string;
 			};
+			contentCount: { files: number; folders: number };
 	  }
 	| {
 			type: "file host";
@@ -823,6 +851,7 @@ type CommonData =
 				/** Human-readable path that is simply the name of the file host + "/" */
 				legiblePath: `${string}/`;
 			};
+			contentCount: { files: number; folders: number };
 	  };
 
 /** Helper for extracting common data */
@@ -843,6 +872,8 @@ export function gGetCommonPropsFromFileOrFileHostOrDirectory(
 		const name = obj.name;
 
 		return {
+			// TODO: make a thod to get these stuff
+			contentCount: { files: 0, folders: 0 },
 			dateCreated: obj.dateCreated,
 			name: name,
 			path: { absolute: obj.root(), legiblePath: `${name}/` },
@@ -867,6 +898,7 @@ export function gGetCommonPropsFromFileOrFileHostOrDirectory(
 	} else {
 		const relativePath = FileHost.getRelativePathFromAbsolutePath(obj.path);
 		return {
+			contentCount: { files: obj.fileCount, folders: obj.folderCount },
 			dateCreated: obj.dateEdited,
 			name: obj.name,
 			path: {
