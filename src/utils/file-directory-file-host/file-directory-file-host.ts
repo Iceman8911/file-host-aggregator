@@ -56,7 +56,7 @@ type CommonData =
 	  };
 
 /** Helper for extracting common data */
-export function gGetCommonPropsFromFileOrFileHostOrDirectory(
+export function getCommonPropsFromFileOrFileHostOrDirectory(
 	obj: FileOrDirectoryOrFileHost,
 ): CommonData {
 	/** To convert a number in bytes to kb, mb, gb */

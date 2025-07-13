@@ -2,112 +2,44 @@ import { hfs } from "@humanfs/web";
 import { trackStore } from "@solid-primitives/deep";
 import { createAsync } from "@solidjs/router";
 import { parse, stringify } from "@worker-tools/structured-json";
-import CloudIcon from "lucide-solid/icons/cloud";
-import CopyIcon from "lucide-solid/icons/copy";
-import DownloadIcon from "lucide-solid/icons/download";
-import OthersIcon from "lucide-solid/icons/ellipsis-vertical";
-import DefaultFileIcon from "lucide-solid/icons/file";
-import ArchiveFileIcon from "lucide-solid/icons/file-archive";
-import AudioFileIcon from "lucide-solid/icons/file-audio";
-import FileCogIcon from "lucide-solid/icons/file-cog";
-import ImageFileIcon from "lucide-solid/icons/file-image";
-import UnknownFileIcon from "lucide-solid/icons/file-question-mark";
-import TextFileIcon from "lucide-solid/icons/file-text";
-import DocumentFileIcon from "lucide-solid/icons/file-type";
-import UploadFileIcon from "lucide-solid/icons/file-up";
-import VideoFileIcon from "lucide-solid/icons/file-video";
-import DefaultFolderIcon from "lucide-solid/icons/folder";
-import ClosedFolderIcon from "lucide-solid/icons/folder-closed";
-import OpenedFolderIcon from "lucide-solid/icons/folder-open";
-import CreateFolderIcon from "lucide-solid/icons/folder-plus";
-import UploadFolderIcon from "lucide-solid/icons/folder-up";
-import HardDriveIcon from "lucide-solid/icons/hard-drive";
-import InfoIcon from "lucide-solid/icons/info";
-import MoveIcon from "lucide-solid/icons/move-up-left";
-import RefreshIcon from "lucide-solid/icons/refresh-ccw";
-import SearchIcon from "lucide-solid/icons/search";
-import TrashIcon from "lucide-solid/icons/trash-2";
-import {
-	createEffect,
-	createMemo,
-	For,
-	type JSX,
-	Match,
-	on,
-	onMount,
-	Show,
-	Suspense,
-	Switch,
-} from "solid-js";
-import {
-	createStore,
-	produce,
-	type SetStoreFunction,
-	unwrap,
-} from "solid-js/store";
-import { Dynamic } from "solid-js/web";
+import { createEffect, createMemo, on, onMount, Show } from "solid-js";
+import { createStore, produce, unwrap } from "solid-js/store";
 import { FileHost } from "~/classes/file-host";
 import { FileHostFile } from "~/classes/file-host-file";
 import { ROOT_PATH } from "~/shared/constants";
-import { FILE_TYPE } from "~/shared/enums";
-import { gFileHostIcons } from "~/shared/file-host-icons";
-import type {
-	FileHostID,
-	FileHostImplementations,
-} from "~/types/file-directory-file-host/file-host";
 import type {
 	FileOrDirectory,
 	FileOrDirectoryOrFileHost,
 } from "~/types/file-directory-file-host/file-directory-file-host";
 import type {
-	AbsoluteDirectoryPath,
-	RelativeDirectoryPath,
-	RelativeFilePath,
-} from "~/types/path";
+	FileHostID,
+	FileHostImplementations,
+} from "~/types/file-directory-file-host/file-host";
+import type {
+	FilesOrDirectoriesOrFileHosts,
+	FileView_Settings,
+} from "~/types/file-view";
+import type { AbsoluteDirectoryPath } from "~/types/path";
 import { quickSort } from "~/utils/async-quick-sort";
-import { gGetCommonPropsFromFileOrFileHostOrDirectory } from "~/utils/file-directory-file-host/file-directory-file-host";
-import {
-	convertDateToLegibleString,
-	downloadBlobToDisk,
-	generateUUID,
-} from "~/utils/other";
-import LoadingSpinner from "../loading-spinner";
-import CustomContextMenu from "../menu/custom-context-menu";
-import CreateFileHostModal from "../modal/create-file-host";
+import { generateUUID } from "~/utils/other";
 import FileDetails from "../modal/file-details";
-import { GenericModal, showModal } from "../modal/modal";
-import UploadFileModal from "../modal/upload-file";
+import { showModal } from "../modal/modal";
+import { FileView_DirectoryPathBar } from "./directory-path-bar";
+import { FileView_ListOfFilesAndFoldersAndFileHosts } from "./list-of-files-and-directories-and-file-hosts";
+import { FileView_OptionsDropdownBtn } from "./option-dropdown-btn";
+import { FileView_UtilityIcons } from "./utility-icons";
 
-type FilePathTracker = {
-	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
-	fileHost: FileHostImplementations | null;
-
-	/** Path relative to the `root` of the fileHost.
-	 *
-	 * **Don't forget to combine both values, when using the path**
-	 */
-	relativePath: RelativeDirectoryPath;
+type SerializableFilePathTracker = FileView_Settings["pathData"] & {
+	fileHost: FileHostID | null;
 };
 
-/** I hate that I actually wrote this >~< */
-type FilesOrDirectoriesOrFileHosts =
-	| FileOrDirectory[]
-	| FileHostImplementations[]
-	| null;
-
-type FileViewSettings = {
-	iconSize: "XS" | "S" | "M" | "L" | "XL";
-	/** How the icons / file buttons will be displayed */
-	mode: "grid-1" | "grid-2" | "list" | "minimal" | "columned";
-	/** This is used to determine what files / filehosts should be shown */
-	pathData: FilePathTracker;
-	/** Whether the file host(s) data is currently being refreshed */
-	isRefreshing: boolean;
-	/** How the files and folders should be sorted when displaying them */
-	sorting: { param: "name" | "date" | "size" | "type"; order: "asc" | "desc" };
+type SerializableFileViewSettings = FileView_Settings & {
+	pathData: SerializableFilePathTracker;
 };
 
-const defaultFileViewSettings: Readonly<FileViewSettings> = {
+const FILE_VIEW_SETTINGS_SAVE_PATH = "settings/file-view-settings.json";
+
+const defaultFileViewSettings: Readonly<FileView_Settings> = {
 	iconSize: "M",
 	isRefreshing: false,
 	mode: "grid-1",
@@ -116,12 +48,66 @@ const defaultFileViewSettings: Readonly<FileViewSettings> = {
 	sorting: { order: "asc", param: "name" },
 };
 
-const [fileViewSettings, setFileViewSettings] = createStore<FileViewSettings>(
+const [fileViewSettings, setFileViewSettings] = createStore<FileView_Settings>(
 	defaultFileViewSettings,
 );
 
-/** So I can optionally hide / show some stuff when it makes sense  */
-const isViewingFileHostOnlyArea = () => !fileViewSettings.pathData.fileHost;
+type FileDetailsDialogData = {
+	data: FileOrDirectoryOrFileHost | null;
+	modalId: string;
+};
+
+const [fileDetailsDialogData, setFileDetailsDialogData] =
+	createStore<FileDetailsDialogData>({ data: null, modalId: generateUUID() });
+
+export const FileView_Shared = {
+	/** This is the place that all the created file host will be displayed */
+	handleNavigateToFileHostsView() {
+		setFileViewSettings(
+			produce((state) => {
+				state.pathData.fileHost = null;
+			}),
+		);
+	},
+
+	/** This the the root path in a selected file host.
+	 *
+	 * It assumes that a file host has previously been selected */
+	handleNavigateToFileHostRoot() {
+		setFileViewSettings(
+			produce((state) => {
+				state.pathData.relativePath = ROOT_PATH;
+			}),
+		);
+	},
+
+	/** What controls when a file or directory or file host is opened */
+	handleOpenFileOrDirectoryOrFileHost(data: FileOrDirectoryOrFileHost) {
+		setFileViewSettings(
+			produce((state) => {
+				if (data instanceof FileHost) {
+					state.pathData.fileHost = data;
+					state.pathData.relativePath = ROOT_PATH;
+				} else if (!(data instanceof FileHostFile)) {
+					state.pathData.relativePath = [
+						state.pathData.relativePath,
+						data.name,
+					].flat();
+				}
+			}),
+		);
+	},
+
+	/** Displays the details of a file or directory or file host */
+	handleShowFileOrDirectoryOrFileHostDetails(data: FileOrDirectoryOrFileHost) {
+		setFileDetailsDialogData(
+			produce((state) => {
+				state.data = data;
+			}),
+		);
+		showModal(fileDetailsDialogData.modalId);
+	},
+};
 
 export default function FileView() {
 	const fileHostArray = () => Array.from(FileHost.collection.values());
@@ -140,14 +126,6 @@ export default function FileView() {
 
 		await cacheFileHostRootContents();
 	});
-
-	type SerializableFilePathTracker = FilePathTracker & {
-		fileHost: FileHostID | null;
-	};
-	type SerializableFileViewSettings = FileViewSettings & {
-		pathData: SerializableFilePathTracker;
-	};
-	const FILE_VIEW_SETTINGS_SAVE_PATH = "settings/file-view-settings.json";
 
 	async function serializeAndSaveFileViewSettings() {
 		const clone = { ...unwrap(fileViewSettings) };
@@ -176,7 +154,7 @@ export default function FileView() {
 				? (FileHost.collection.get(parsedSettings.pathData.fileHost) ?? null)
 				: null;
 
-		const settingsToRestore: FileViewSettings = {
+		const settingsToRestore: FileView_Settings = {
 			...parsedSettings,
 			pathData: {
 				...parsedSettings.pathData,
@@ -336,677 +314,30 @@ export default function FileView() {
 		<>
 			<div class="grid grid-cols-[1fr_32.5%] sm:grid-cols-[1fr_20%] grid-rows-[2.5rem_1fr] gap-4 p-2 size-full *:bg-base-200 *:rounded-field *:w-full">
 				{/* Breadcrumbs bar */}
-				<DirectoryPathBar
+				<FileView_DirectoryPathBar
 					pathData={fileViewSettings.pathData}
 					setter={setFileViewSettings}
 				/>
 
 				{/* Utility icons */}
-				<UtilityIcons
+				<FileView_UtilityIcons
 					settings={fileViewSettings}
 					settingsSetter={setFileViewSettings}
 				/>
 
 				{/* Folder/File view */}
-				<ListOfFilesAndFoldersAndFileHosts
+				<FileView_ListOfFilesAndFoldersAndFileHosts
 					list={displayedFilesOrFileHosts.latest}
+					settings={fileViewSettings}
 					settingsSetter={setFileViewSettings}
 				/>
 			</div>
 
 			{/* Option Dropdown Btn */}
-			<OptionsDropdownBtn />
-		</>
-	);
-}
-
-const handleNavigateToFileHostsView = () => {
-	setFileViewSettings(
-		produce((state) => {
-			state.pathData.fileHost = null;
-		}),
-	);
-};
-
-const handleNavigateToFileHostRoot = () => {
-	setFileViewSettings(
-		produce((state) => {
-			state.pathData.relativePath = ROOT_PATH;
-		}),
-	);
-};
-
-/**
- *
- * @param pathIndex The index of the path to navigate to in the `relativePath` array.
- */
-const handleNavigateToPath = (pathIndex: number) => {
-	setFileViewSettings(
-		produce((state) => {
-			state.pathData.relativePath = state.pathData.relativePath.slice(
-				0,
-				pathIndex + 1,
-			);
-		}),
-	);
-};
-
-function DirectoryPathBar(prop: {
-	pathData: FilePathTracker;
-	setter: SetStoreFunction<FileViewSettings>;
-}) {
-	return (
-		<div class="breadcrumbs text-sm sm:text-[1.025rem] px-4 text-primary overflow-y-clip scrollbar-thin select-none">
-			<ul class="*:last:font-bold">
-				<li>
-					<button type="button" onClick={handleNavigateToFileHostsView}>
-						<CloudIcon />
-						File Hosts
-					</button>
-				</li>
-
-				<Show when={prop.pathData.fileHost}>
-					{(fileHost) => {
-						const relativePath = () => prop.pathData.relativePath;
-
-						return (
-							<>
-								<li>
-									<button type="button" onClick={handleNavigateToFileHostRoot}>
-										<HardDriveIcon />
-										{fileHost().name}
-									</button>
-								</li>
-
-								<For each={relativePath()}>
-									{(pathFragment, index) => (
-										<li>
-											<Show
-												// Don't apply to the last list item
-												when={relativePath().length - 1 !== index()}
-												fallback={
-													<div class="flex gap-2 place-items-center">
-														<ClosedFolderIcon />
-														{pathFragment}
-													</div>
-												}
-											>
-												<button
-													type="button"
-													onClick={() => handleNavigateToPath(index())}
-												>
-													<OpenedFolderIcon />
-													{pathFragment}
-												</button>
-											</Show>
-										</li>
-									)}
-								</For>
-							</>
-						);
-					}}
-				</Show>
-			</ul>
-		</div>
-	);
-}
-
-function UtilityIcons(prop: {
-	settings: FileViewSettings;
-	settingsSetter: SetStoreFunction<FileViewSettings>;
-}) {
-	const settings = () => prop.settings;
-
-	const handleRefreshFiles = async () => {
-		if (settings().isRefreshing === true) return;
-
-		prop.settingsSetter(
-			produce(async (state) => {
-				state.isRefreshing = true;
-
-				// Refetch the data
-				await state.pathData.fileHost?.downloadFiles();
-
-				state.isRefreshing = false;
-			}),
-		);
-	};
-
-	return (
-		<div class="flex gap-2 justify-center items-center *:btn *:btn-primary *:btn-soft *:btn-sm *:p-1 *:btn-circle">
-			<button type="button">
-				<SearchIcon />
-			</button>{" "}
-			<button
-				type="button"
-				disabled={isViewingFileHostOnlyArea()}
-				onClick={handleRefreshFiles}
-			>
-				<Show when={settings().isRefreshing} fallback={<RefreshIcon />}>
-					<span class="loading loading-spinner"></span>
-				</Show>
-			</button>
-		</div>
-	);
-}
-
-function ListOfFilesAndFoldersAndFileHosts(prop: {
-	list: FilesOrDirectoriesOrFileHosts | undefined;
-	settingsSetter: SetStoreFunction<FileViewSettings>;
-}) {
-	type FileDetailsDialogData = {
-		data: FileOrDirectoryOrFileHost | null;
-		modalId: string;
-	};
-
-	const [fileDetailsDialogData, setFileDetailsDialogData] =
-		createStore<FileDetailsDialogData>({ data: null, modalId: generateUUID() });
-
-	const handleOpenFileOrDirectoryOrFileHost = (
-		val: FileOrDirectoryOrFileHost,
-	) => {
-		prop.settingsSetter(
-			produce((state) => {
-				if (val instanceof FileHost) {
-					state.pathData.fileHost = val;
-					state.pathData.relativePath = ROOT_PATH;
-				} else if (!(val instanceof FileHostFile)) {
-					state.pathData.relativePath = [
-						state.pathData.relativePath,
-						val.name,
-					].flat();
-				}
-			}),
-		);
-	};
-
-	const handleShowFileOrFolderOrFileHostDetails = (
-		data: FileOrDirectoryOrFileHost,
-	) => {
-		setFileDetailsDialogData(
-			produce((state) => {
-				state.data = data;
-			}),
-		);
-		showModal(fileDetailsDialogData.modalId);
-	};
-
-	function ContextMenu(prop: { data: FileOrDirectoryOrFileHost }) {
-		function UniqueOptions() {
-			return (
-				<Switch>
-					<Match
-						when={
-							(prop.data instanceof FileHost ||
-								!(prop.data instanceof FileHostFile)) &&
-							prop.data
-						}
-					>
-						{(val) => (
-							<li>
-								<button
-									type="button"
-									onClick={() => handleOpenFileOrDirectoryOrFileHost(val())}
-								>
-									<Show
-										when={val() instanceof FileHost}
-										fallback={<OpenedFolderIcon />}
-									>
-										<HardDriveIcon />
-									</Show>
-									Open
-								</button>
-							</li>
-						)}
-					</Match>
-
-					<Match when={prop.data instanceof FileHostFile && prop.data}>
-						{(file) => {
-							return (
-								<li>
-									<button type="button" onClick={(_) => file().getFile()}>
-										<DefaultFileIcon />
-										View
-									</button>
-								</li>
-							);
-						}}
-					</Match>
-				</Switch>
-			);
-		}
-
-		async function downloadFileOrDirectoryToDisk() {
-			if (prop.data instanceof FileHostFile) {
-				prop.data.downloadFileToDisk();
-			} else if (!(prop.data instanceof FileHost)) {
-				const allDirContents =
-					(await FileHost.getFileHostFromAbsolutePath(
-						prop.data.path,
-					)?.getDirContentsRecursively(prop.data.path)) ?? [];
-
-				if (!allDirContents.length) return;
-
-				const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
-				const filesToArchivePromises: Array<
-					Promise<{ data: ArrayBuffer; path: RelativeFilePath }>
-				> = [];
-
-				for (const possibleFile of allDirContents) {
-					if (possibleFile instanceof FileHostFile) {
-						// Don't individually wait on each request
-						filesToArchivePromises.push(
-							possibleFile.getFile().then((blob) =>
-								blob.arrayBuffer().then((buffer) => {
-									return {
-										data: buffer,
-										path: possibleFile.relativePath,
-									};
-								}),
-							),
-						);
-					}
-				}
-
-				(await Promise.allSettled(filesToArchivePromises)).forEach((result) => {
-					if (result.status === "fulfilled") {
-						const {
-							value: { data, path },
-						} = result;
-						filesToArchive.push({
-							data,
-							path,
-						});
-					}
-				});
-
-				const { archiveFiles } = await import("~/utils/fflate-archiving");
-				const zipRes = await archiveFiles(filesToArchive);
-
-				downloadBlobToDisk(zipRes, zipRes.name);
-			}
-		}
-
-		return (
-			<>
-				<UniqueOptions />
-
-				<li>
-					<button type="button" onClick={downloadFileOrDirectoryToDisk}>
-						<DownloadIcon />
-						Download
-					</button>
-				</li>
-
-				<li>
-					<button type="button">
-						<CopyIcon />
-						Copy
-					</button>
-				</li>
-
-				<li>
-					<button type="button">
-						<MoveIcon />
-						Move
-					</button>
-				</li>
-
-				<li>
-					<button type="button" class="text-error">
-						<TrashIcon />
-						Delete
-					</button>
-				</li>
-
-				<li>
-					<button
-						type="button"
-						onClick={() => {
-							handleShowFileOrFolderOrFileHostDetails(prop.data);
-						}}
-					>
-						<InfoIcon />
-						Details
-					</button>
-				</li>
-			</>
-		);
-	}
-
-	function Thumbnail(prop: { data: FileOrDirectoryOrFileHost }) {
-		return (
-			<Switch>
-				<Match when={prop.data instanceof FileHost && prop.data}>
-					{(val) => (
-						<>
-							<HardDriveIcon />
-							<Dynamic
-								component={gFileHostIcons[val().type]}
-								class="absolute right-0 bottom-0 size-6 opacity-75"
-							/>
-						</>
-					)}
-				</Match>
-
-				<Match
-					when={
-						!(prop.data instanceof FileHost) &&
-						!(prop.data instanceof FileHostFile)
-					}
-				>
-					<DefaultFolderIcon />
-				</Match>
-
-				<Match when={prop.data instanceof FileHostFile && prop.data}>
-					{(file) => (
-						<Switch fallback={<UnknownFileIcon />}>
-							<Match when={file().type === FILE_TYPE.ARCHIVE}>
-								<ArchiveFileIcon />
-							</Match>
-
-							<Match when={file().type === FILE_TYPE.AUDIO}>
-								<AudioFileIcon />
-							</Match>
-
-							<Match when={file().type === FILE_TYPE.DOCUMENT}>
-								<DocumentFileIcon />
-							</Match>
-
-							<Match when={file().type === FILE_TYPE.IMAGE}>
-								<ImageFileIcon />
-							</Match>
-
-							<Match when={file().type === FILE_TYPE.TEXT}>
-								<TextFileIcon />
-							</Match>
-
-							<Match when={file().type === FILE_TYPE.VIDEO}>
-								<VideoFileIcon />
-							</Match>
-						</Switch>
-					)}
-				</Match>
-			</Switch>
-		);
-	}
-
-	function SpaceUsedPercentageRadialBar(prop: {
-		data: FileOrDirectoryOrFileHost;
-	}) {
-		return (
-			<Show when={prop.data instanceof FileHost && prop.data}>
-				{(val) => {
-					const resolvedValues = createAsync(async () => {
-						return {
-							spaceUsed: await val().spaceUsed(),
-							spaceTotal: await val().spaceTotal(),
-						};
-					});
-
-					return (
-						<Suspense fallback={<LoadingSpinner />}>
-							<Show when={resolvedValues()}>
-								{(val) => {
-									const percentageUsed = (
-										(val().spaceUsed / val().spaceTotal) *
-										100
-									).toFixed(2);
-
-									return (
-										<div
-											// When the parent button is hover over, the radial bar will change color to still be legible
-											class="radial-progress text-secondary mt-0.5 group-hover:text-secondary-content"
-											style={`--value:${percentageUsed};`}
-											aria-valuenow={percentageUsed}
-											role="progressbar"
-										>
-											{percentageUsed}%
-										</div>
-									);
-								}}
-							</Show>
-						</Suspense>
-					);
-				}}
-			</Show>
-		);
-	}
-
-	function Grid1View() {
-		return (
-			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<For each={prop.list}>
-						{(val) => {
-							const name =
-								gGetCommonPropsFromFileOrFileHostOrDirectory(val).name;
-
-							return (
-								<CustomContextMenu
-									closeOnClick={true}
-									contextMenu={<ContextMenu data={val} />}
-								>
-									<button
-										type="button"
-										class="relative group flex flex-col justify-center items-center w-22 md:w-27 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
-										title={name}
-										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-									>
-										<div class="relative size-fit *:first:size-16">
-											<Thumbnail data={val} />
-										</div>
-
-										<p class="font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{name}
-										</p>
-
-										<SpaceUsedPercentageRadialBar data={val} />
-									</button>
-								</CustomContextMenu>
-							);
-						}}
-					</For>
-				</Suspense>
-			</div>
-		);
-	}
-
-	function Grid2View() {
-		return (
-			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<For each={prop.list}>
-						{(val) => {
-							const name =
-								gGetCommonPropsFromFileOrFileHostOrDirectory(val).name;
-
-							return (
-								<CustomContextMenu
-									closeOnClick={true}
-									contextMenu={<ContextMenu data={val} />}
-								>
-									<button
-										type="button"
-										class="relative group flex flex-col justify-center items-center w-22 md:w-27 lg:w-30 h-fit aspect-square btn btn-primary btn-soft text-xs sm:text-sm"
-										title={name}
-										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-									>
-										<div class="relative size-fit *:first:size-16">
-											<Thumbnail data={val} />
-										</div>
-
-										<p class="font-bold [word-break:auto-phrase] h-16 overflow-hidden text-ellipsis w-full">
-											{name}
-										</p>
-
-										<SpaceUsedPercentageRadialBar data={val} />
-									</button>
-								</CustomContextMenu>
-							);
-						}}
-					</For>
-				</Suspense>
-			</div>
-		);
-	}
-
-	function ListView() {
-		return (
-			<div class="col-[1_/_3] grid grid-cols-1 auto-rows-[4.5rem] gap-2 md:gap-4 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<For each={prop.list}>
-						{(val) => {
-							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
-
-							const name = data.name;
-							const date = convertDateToLegibleString(data.dateCreated);
-							const size = createAsync(() => Promise.resolve(data.size));
-
-							return (
-								<CustomContextMenu
-									closeOnClick={true}
-									contextMenu={<ContextMenu data={val} />}
-								>
-									<button
-										type="button"
-										class="relative group px-2 grid grid-cols-[20%_42.5%_35%] sm:grid-cols-[15%_47.5%_35%] grid-rows-[1.5fr_1fr] items-center size-full aspect-square btn btn-primary btn-soft"
-										title={name}
-										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-									>
-										<div class="relative size-fit row-span-2 *:first:size-12 md:*:first:size-16">
-											<Thumbnail data={val} />
-										</div>
-
-										<p class="col-[2/4] text-left sm:text-lg font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{name}
-										</p>
-
-										<p class="row-[2/3] col-[2/3] text-left text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
-											<Suspense fallback={<LoadingSpinner />}>
-												{size.latest?.parsed}
-											</Suspense>
-										</p>
-
-										<p class="row-[2/3] col-[3/4] text-right text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{date}
-										</p>
-									</button>
-								</CustomContextMenu>
-							);
-						}}
-					</For>
-				</Suspense>
-			</div>
-		);
-	}
-
-	function MinimalView() {
-		return (
-			<div class="col-[1_/_3] flex flex-wrap place-content-start gap-4 md:gap-8 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<For each={prop.list}>
-						{(val) => {
-							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
-							const name = data.name;
-
-							return (
-								<CustomContextMenu
-									closeOnClick={true}
-									contextMenu={<ContextMenu data={val} />}
-								>
-									<button
-										type="button"
-										class="relative group flex flex-col justify-center items-center w-30 lg:w-35 h-fit aspect-video btn btn-ghost text-primary p-0 text-sm"
-										title={name}
-										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-									>
-										<p class="font-bold overflow-clip text-ellipsis [word-break:auto-phrase] size-full">
-											{name}
-										</p>
-									</button>
-								</CustomContextMenu>
-							);
-						}}
-					</For>
-				</Suspense>
-			</div>
-		);
-	}
-
-	function ColumnedView() {
-		return (
-			<div class="col-[1_/_3] grid grid-cols-1 auto-rows-[4.5rem] gap-2 md:gap-4 p-4 select-none overflow-y-auto">
-				<Suspense fallback={<LoadingSpinner />}>
-					<For each={prop.list}>
-						{(val) => {
-							const data = gGetCommonPropsFromFileOrFileHostOrDirectory(val);
-
-							const name = data.name;
-							const date = convertDateToLegibleString(data.dateCreated);
-							const size = createAsync(() => Promise.resolve(data.size));
-
-							return (
-								<CustomContextMenu
-									closeOnClick={true}
-									contextMenu={<ContextMenu data={val} />}
-								>
-									<button
-										type="button"
-										class="relative group px-2 grid grid-cols-[15%_42.5%_15%_25%] items-center size-full aspect-square btn btn-primary btn-soft md:text-lg"
-										title={name}
-										onClick={() => handleOpenFileOrDirectoryOrFileHost(val)}
-									>
-										<div class="relative size-fit *:first:size-12 md:*:first:size-16">
-											<Thumbnail data={val} />
-										</div>
-
-										<p class="text-left text-sm font-bold overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{name}
-										</p>
-
-										<p class="text-left text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
-											<Suspense fallback={<LoadingSpinner />}>
-												{size.latest?.parsed}
-											</Suspense>
-										</p>
-
-										<p class="text-right text-sm overflow-clip text-ellipsis whitespace-nowrap w-full">
-											{date}
-										</p>
-									</button>
-								</CustomContextMenu>
-							);
-						}}
-					</For>
-				</Suspense>
-			</div>
-		);
-	}
-
-	return (
-		<>
-			<Switch>
-				<Match when={fileViewSettings.mode === "grid-1"}>
-					<Grid1View />
-				</Match>
-
-				<Match when={fileViewSettings.mode === "grid-2"}>
-					<Grid2View />
-				</Match>
-
-				<Match when={fileViewSettings.mode === "list"}>
-					<ListView />
-				</Match>
-
-				<Match when={fileViewSettings.mode === "minimal"}>
-					<MinimalView />
-				</Match>
-
-				<Match when={fileViewSettings.mode === "columned"}>
-					<ColumnedView />
-				</Match>
-			</Switch>
+			<FileView_OptionsDropdownBtn
+				settings={fileViewSettings}
+				settingsSetter={setFileViewSettings}
+			/>
 
 			{/* Dialogs */}
 			<Show when={fileDetailsDialogData.data}>
@@ -1018,282 +349,5 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				)}
 			</Show>
 		</>
-	);
-}
-
-/** For exposing other actions like creating file hosts / uploading files */
-function OptionsDropdownBtn() {
-	function Dropdown(prop: {
-		btn: JSX.Element;
-		/** A list of options, excluding the `<ul>` tags */
-		children: JSX.Element;
-	}) {
-		return (
-			<div class="dropdown dropdown-left dropdown-end absolute bottom-8 right-12 md:bottom-10 md:right-14 [position-area:start]">
-				{/* biome-ignore lint/a11y: Bug with safari makes buttons unfocusable :( */}
-				<div tabindex="0" role="button" class="">
-					{prop.btn}
-				</div>
-
-				<ul
-					tabindex="0"
-					class="dropdown-content menu bg-base-100 rounded-box z-1 w-max p-2 shadow-sm mr-4 border border-secondary font-semibold [&_button]:text-center"
-				>
-					{prop.children}
-				</ul>
-			</div>
-		);
-	}
-
-	const createFileHostModalId = generateUUID();
-	const fileViewSettingsModalId = generateUUID();
-	const uploadFileModalId = generateUUID();
-
-	function FileHostSpecificOptions() {
-		return (
-			<li>
-				<button type="button" onClick={(_) => showModal(createFileHostModalId)}>
-					<HardDriveIcon />
-					Create File Host
-				</button>
-			</li>
-		);
-	}
-
-	function NonFileHostSpecificOptions() {
-		return (
-			<>
-				<li>
-					<button type="button" onClick={handleNavigateToFileHostsView}>
-						<HardDriveIcon />
-						Back To File Hosts
-					</button>
-				</li>
-
-				<li>
-					<button type="button" onClick={(_) => showModal(uploadFileModalId)}>
-						<UploadFileIcon />
-						Upload File
-					</button>
-				</li>
-
-				<li>
-					<button type="button">
-						<UploadFolderIcon />
-						Upload Folder
-					</button>
-				</li>
-
-				<li>
-					<button type="button">
-						<CreateFolderIcon />
-						Create Folder
-					</button>
-				</li>
-			</>
-		);
-	}
-
-	return (
-		<>
-			<Dropdown
-				btn={
-					<button
-						type="button"
-						class="size-16 btn btn-secondary btn-circle opacity-85"
-						title="Other Actions"
-					>
-						<OthersIcon />
-					</button>
-				}
-			>
-				<Show
-					when={!isViewingFileHostOnlyArea()}
-					fallback={<FileHostSpecificOptions />}
-				>
-					<NonFileHostSpecificOptions />
-				</Show>
-
-				<li>
-					<button
-						type="button"
-						onClick={(_) => showModal(fileViewSettingsModalId)}
-					>
-						<FileCogIcon />
-						View Settings
-					</button>
-				</li>
-			</Dropdown>
-
-			{/* Dialogs */}
-			<CreateFileHostModal modalId={createFileHostModalId} />
-			<FileViewSettingsModal modalId={fileViewSettingsModalId} />
-			<UploadFileModal
-				modalId={uploadFileModalId}
-				defaultDirectory={
-					fileViewSettings.pathData.fileHost?.getAbsolutePathFromRelativePath(
-						fileViewSettings.pathData.relativePath,
-					) ?? null
-				}
-			/>
-		</>
-	);
-}
-
-function FileViewSettingsModal(prop: { modalId: string }) {
-	const displayModeRadioBtnName = "file-view-display-mode";
-	const sortParamRadioBtnName = "file-view-sort-param";
-	const sortDirectionRadioBtnName = "file-view-sort-direction";
-
-	function DisplayModeRadioBtns() {
-		const options = [
-			{ name: "Grid-1", value: "grid-1" },
-			{ name: "Grid-2", value: "grid-2" },
-			{ name: "List", value: "list" },
-			{ name: "Columned", value: "columned" },
-			{ name: "Minimal", value: "minimal" },
-		] as const satisfies ReadonlyArray<{
-			name: Capitalize<FileViewSettings["mode"]>;
-			value: FileViewSettings["mode"];
-		}>;
-
-		return (
-			<div class="flex flex-col gap-2">
-				<div class="font-semibold">Display Mode:</div>
-
-				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
-					<For each={options}>
-						{({ name, value }) => {
-							const isSelected = () => value === fileViewSettings.mode;
-
-							return (
-								<label>
-									{name}
-									<input
-										type="radio"
-										name={displayModeRadioBtnName}
-										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
-										checked={isSelected()}
-										onInput={(_) =>
-											setFileViewSettings(
-												produce((state) => {
-													state.mode = value;
-												}),
-											)
-										}
-									/>
-								</label>
-							);
-						}}
-					</For>
-				</div>
-			</div>
-		);
-	}
-
-	function SortParamRadioBtns() {
-		const options = [
-			{ name: "Date", value: "date" },
-			{ name: "Name", value: "name" },
-			{ name: "Size", value: "size" },
-			{ name: "Type", value: "type" },
-		] as const satisfies ReadonlyArray<{
-			name: Capitalize<FileViewSettings["sorting"]["param"]>;
-			value: FileViewSettings["sorting"]["param"];
-		}>;
-
-		return (
-			<div class="flex flex-col gap-2">
-				<div class="font-semibold">Sorting Mode:</div>
-
-				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
-					<For each={options}>
-						{({ name, value }) => {
-							const isSelected = () => value === fileViewSettings.sorting.param;
-
-							return (
-								<label>
-									{name}
-									<input
-										type="radio"
-										name={sortParamRadioBtnName}
-										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
-										checked={isSelected()}
-										onInput={(_) =>
-											setFileViewSettings(
-												produce((state) => {
-													state.sorting.param = value;
-												}),
-											)
-										}
-									/>
-								</label>
-							);
-						}}
-					</For>
-				</div>
-			</div>
-		);
-	}
-
-	function SortDirectionRadioBtns() {
-		const options = [
-			{ name: "Ascending", value: "asc" },
-			{ name: "Descending", value: "desc" },
-		] as const satisfies ReadonlyArray<{
-			name: string;
-			value: FileViewSettings["sorting"]["order"];
-		}>;
-
-		return (
-			<div class="flex flex-col gap-2">
-				<div class="font-semibold">Sorting Direction:</div>
-
-				<div class="flex gap-4 flex-wrap **:[_input]:ml-2">
-					<For each={options}>
-						{({ name, value }) => {
-							const isSelected = () => value === fileViewSettings.sorting.order;
-
-							return (
-								<label>
-									{name}
-									<input
-										type="radio"
-										name={sortDirectionRadioBtnName}
-										class={`radio ${isSelected() ? "radio-primary" : "radio-secondary"}`}
-										checked={isSelected()}
-										onInput={(_) =>
-											setFileViewSettings(
-												produce((state) => {
-													state.sorting.order = value;
-												}),
-											)
-										}
-									/>
-								</label>
-							);
-						}}
-					</For>
-				</div>
-			</div>
-		);
-	}
-
-	return (
-		<GenericModal modalId={prop.modalId}>
-			<h3 class="font-bold text-xl mb-4">File View Settings</h3>
-
-			{/* <p class="mb-3">
-				This is where you can change how the files and folders are displayed.
-			</p> */}
-
-			<div class="flex flex-col gap-4">
-				<DisplayModeRadioBtns />
-
-				<SortParamRadioBtns />
-
-				<SortDirectionRadioBtns />
-			</div>
-		</GenericModal>
 	);
 }

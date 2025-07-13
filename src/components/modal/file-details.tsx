@@ -1,7 +1,7 @@
 import { createAsync } from "@solidjs/router";
 import { createMemo, Show, Suspense } from "solid-js";
 import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host/file-directory-file-host";
-import { gGetCommonPropsFromFileOrFileHostOrDirectory } from "~/utils/file-directory-file-host/file-directory-file-host";
+import { getCommonPropsFromFileOrFileHostOrDirectory } from "~/utils/file-directory-file-host/file-directory-file-host";
 import { convertDateToLegibleString } from "~/utils/other";
 import LoadingSpinner from "../loading-spinner";
 import { GenericModal } from "./modal";
@@ -23,7 +23,7 @@ export default function FileDetails(prop: {
 	modalId: string;
 }) {
 	const data = createMemo<Promise<FileDetailsProps>>(async () => {
-		const data = gGetCommonPropsFromFileOrFileHostOrDirectory(prop.file);
+		const data = getCommonPropsFromFileOrFileHostOrDirectory(prop.file);
 
 		if (data.type === "file host") {
 			return {
