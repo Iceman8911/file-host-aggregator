@@ -17,7 +17,6 @@ import type {
 	AbsoluteFilePath,
 	AnyDirectoryPath,
 	AnyFileOrDirectoryPath,
-	AnyFilePath,
 	FileName,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
