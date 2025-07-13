@@ -161,7 +161,7 @@ export abstract class FileHost {
 		const parsedPath = convertPathToString(path);
 		if (!(await hfs.isFile(parsedPath))) return null;
 
-		const possibleFileData = await hfs.text(parsedPath);
+		const possibleFileData = await hfs.bytes(parsedPath);
 
 		if (!possibleFileData) return null;
 

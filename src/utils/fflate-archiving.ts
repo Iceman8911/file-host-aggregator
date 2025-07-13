@@ -1,4 +1,11 @@
-import { type AsyncZipOptions, type AsyncZippable, strToU8, zip } from "fflate";
+import {
+	type AsyncZipOptions,
+	type AsyncZippable,
+	strFromU8,
+	strToU8,
+	unzipSync,
+	zip,
+} from "fflate";
 import type { AnyFilePath } from "~/types/path";
 import { convertPathToString } from "./path";
 
@@ -71,4 +78,12 @@ function zipPromise(
 	return new Promise((resolve, reject) => {
 		zip(arg, options, (err, res) => (err ? reject(err) : resolve(res)));
 	});
+}
+
+export async function compressStringToBuffer(str: string): Promise<Uint8Array> {
+	return zipPromise({ data: strToU8(str) }, { consume: true });
+}
+
+export function decompressBufferToString(data: Uint8Array) {
+	return Promise.resolve(strFromU8(unzipSync(data).data));
 }

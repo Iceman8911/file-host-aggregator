@@ -246,17 +246,24 @@ export class FileHostFile {
 	}
 
 	async saveToDisk() {
+		const { compressStringToBuffer } = await import("~/utils/fflate-archiving");
 		return hfs.write(
 			convertPathToString(this.path),
-			await FileHostFile.serialize(this),
+			await compressStringToBuffer(await FileHostFile.serialize(this)),
 		);
 	}
 
 	static async deserialize(
-		data: string,
+		data: Uint8Array,
 		fileHostParent: FileHostImplementations,
 	) {
-		const deserializedData: FileHostFile = await parse(data);
+		const { decompressBufferToString } = await import(
+			"~/utils/fflate-archiving"
+		);
+
+		const deserializedData: FileHostFile = await parse(
+			await decompressBufferToString(data),
+		);
 		const newClass = new FileHostFile({
 			fileHostId: fileHostParent.id,
 			fileUrl: window.location.href,
@@ -264,10 +271,7 @@ export class FileHostFile {
 			relativePath: ROOT_PATH,
 		});
 
-		for (const key in deserializedData) {
-			//@ts-expect-error
-			newClass[key] = deserializedData[key];
-		}
+		Object.assign(newClass, deserializedData);
 
 		// Save the changes we made
 		await newClass.saveToDisk();
