@@ -46,35 +46,37 @@ import {
 	unwrap,
 } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
-import {
-	FileHost,
-	FileHostFile,
-	type FileHostID,
-	type FileHostImplementations,
-	type FileOrDirectory,
-	type FileOrDirectoryOrFileHost,
-	FileType,
-	gGetCommonPropsFromFileOrFileHostOrDirectory,
-} from "~/classes/file-host";
-import { quickSort } from "~/declarations/async-quick-sort";
-import {
-	convertDateToLegibleString,
-	downloadBlobToDisk,
-	generateUUID,
-} from "~/declarations/functions";
-import { gFileHostIcons } from "~/declarations/icons";
+import { FileHost } from "~/classes/file-host";
+import { FileHostFile } from "~/classes/file-host-file";
+import { ROOT_PATH } from "~/shared/constants";
+import { FILE_TYPE } from "~/shared/enums";
+import { gFileHostIcons } from "~/shared/file-host-icons";
+import type {
+	FileHostID,
+	FileHostImplementations,
+} from "~/types/file-directory-file-host/file-host";
+import type {
+	FileOrDirectory,
+	FileOrDirectoryOrFileHost,
+} from "~/types/file-directory-file-host/file-directory-file-host";
 import type {
 	AbsoluteDirectoryPath,
 	RelativeDirectoryPath,
 	RelativeFilePath,
-} from "~/declarations/types";
-import { ROOT_PATH } from "~/declarations/variables";
-import LoadingSpinner from "./loading-spinner";
-import CustomContextMenu from "./menu/custom-context-menu";
-import CreateFileHostModal from "./modal/create-file-host";
-import FileDetails from "./modal/file-details";
-import { GenericModal, showModal } from "./modal/modal";
-import UploadFileModal from "./modal/upload-file";
+} from "~/types/path";
+import { quickSort } from "~/utils/async-quick-sort";
+import { gGetCommonPropsFromFileOrFileHostOrDirectory } from "~/utils/file-directory-file-host/file-directory-file-host";
+import {
+	convertDateToLegibleString,
+	downloadBlobToDisk,
+	generateUUID,
+} from "~/utils/other";
+import LoadingSpinner from "../loading-spinner";
+import CustomContextMenu from "../menu/custom-context-menu";
+import CreateFileHostModal from "../modal/create-file-host";
+import FileDetails from "../modal/file-details";
+import { GenericModal, showModal } from "../modal/modal";
+import UploadFileModal from "../modal/upload-file";
 
 type FilePathTracker = {
 	/** If `null`, do not bother with the `path`. Assume that no file host has been selected */
@@ -618,7 +620,7 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 					}
 				});
 
-				const { archiveFiles } = await import("~/lib/fflate-archiving");
+				const { archiveFiles } = await import("~/utils/fflate-archiving");
 				const zipRes = await archiveFiles(filesToArchive);
 
 				downloadBlobToDisk(zipRes, zipRes.name);
@@ -699,27 +701,27 @@ function ListOfFilesAndFoldersAndFileHosts(prop: {
 				<Match when={prop.data instanceof FileHostFile && prop.data}>
 					{(file) => (
 						<Switch fallback={<UnknownFileIcon />}>
-							<Match when={file().type === FileType.ARCHIVE}>
+							<Match when={file().type === FILE_TYPE.ARCHIVE}>
 								<ArchiveFileIcon />
 							</Match>
 
-							<Match when={file().type === FileType.AUDIO}>
+							<Match when={file().type === FILE_TYPE.AUDIO}>
 								<AudioFileIcon />
 							</Match>
 
-							<Match when={file().type === FileType.DOCUMENT}>
+							<Match when={file().type === FILE_TYPE.DOCUMENT}>
 								<DocumentFileIcon />
 							</Match>
 
-							<Match when={file().type === FileType.IMAGE}>
+							<Match when={file().type === FILE_TYPE.IMAGE}>
 								<ImageFileIcon />
 							</Match>
 
-							<Match when={file().type === FileType.TEXT}>
+							<Match when={file().type === FILE_TYPE.TEXT}>
 								<TextFileIcon />
 							</Match>
 
-							<Match when={file().type === FileType.VIDEO}>
+							<Match when={file().type === FILE_TYPE.VIDEO}>
 								<VideoFileIcon />
 							</Match>
 						</Switch>

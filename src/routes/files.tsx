@@ -1,4 +1,4 @@
-import FileView from "~/components/file-view";
+import FileView from "~/components/file-view/file-view";
 
 export default function Files() {
 	return (

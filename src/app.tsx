@@ -1,9 +1,9 @@
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { onMount, Suspense } from "solid-js";
-import Nav from "~/components/Nav";
+import Nav from "~/components/sidebar";
 import "./app.css";
-import { initFileHosts } from "./classes/file-host";
+import { initFileHosts } from "./utils/file-directory-file-host/file-host";
 
 export default function App() {
 	onMount(async () => {

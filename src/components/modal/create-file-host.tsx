@@ -2,8 +2,8 @@ import { Entries } from "@solid-primitives/keyed";
 import { createSignal, Match, Show, Switch } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
-import { gFileHosts } from "~/declarations/enums";
-import { gFileHostIcons } from "~/declarations/icons";
+import { FILE_HOSTS } from "~/shared/enums";
+import { gFileHostIcons } from "~/shared/file-host-icons";
 import LoadingSpinner from "../loading-spinner";
 import { closeModal, GenericModal } from "./modal";
 
@@ -14,7 +14,7 @@ type FileHostInitData = {
 };
 
 export default function CreateFileHostModal(prop: { modalId: string }) {
-	const { MEGA } = gFileHosts;
+	const { MEGA } = FILE_HOSTS;
 	const DEFAULT_FILE_HOST_INIT_DATA: FileHostInitData = {
 		email: "",
 		name: "",
@@ -22,7 +22,7 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 	};
 
 	const [selectedFileHost, setSelectedFileHost] =
-		createSignal<gFileHosts | null>(null);
+		createSignal<FILE_HOSTS | null>(null);
 	const [fileHostInitData, setFileHostInitData] = createStore<FileHostInitData>(
 		DEFAULT_FILE_HOST_INIT_DATA,
 	);
@@ -140,7 +140,7 @@ export default function CreateFileHostModal(prop: { modalId: string }) {
 											setIsInitializingFileHost(true);
 
 											switch (fileHost()) {
-												case gFileHosts.MEGA: {
+												case FILE_HOSTS.MEGA: {
 													const { MEGASyncFileHost } = await import(
 														"./../../classes/mega-sync"
 													);

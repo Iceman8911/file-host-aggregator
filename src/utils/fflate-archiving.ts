@@ -1,6 +1,6 @@
 import { type AsyncZipOptions, type AsyncZippable, strToU8, zip } from "fflate";
-import { convertPathToString } from "~/declarations/functions";
-import type { AnyFilePath } from "~/declarations/types";
+import type { AnyFilePath } from "~/types/path";
+import { convertPathToString } from "./path";
 
 const ALREADY_COMPRESSED_FILE_EXTENSIONS = [
 	"zip",

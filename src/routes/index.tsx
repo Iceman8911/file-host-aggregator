@@ -1,10 +1,10 @@
 import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import { Show } from "solid-js";
 import { FileHost } from "~/classes/file-host";
-import FileView from "~/components/file-view";
+import FileView from "~/components/file-view/file-view";
 import CreateFileHostModal from "~/components/modal/create-file-host";
 import { showModal } from "~/components/modal/modal";
-import { generateUUID } from "~/declarations/functions";
+import { generateUUID } from "~/utils/other";
 
 export default function Home() {
 	const fileHostMap = FileHost.collection;

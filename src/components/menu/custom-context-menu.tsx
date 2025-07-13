@@ -1,12 +1,14 @@
 import { createEffect, type JSX, onCleanup, onMount, Show } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createStore } from "solid-js/store";
 import { Portal } from "solid-js/web";
 
 /** Applies a custom context menu around the children */
 export default function CustomContextMenu(prop: {
 	/** Should be a list of items e.g `<li><button>...</button></li> <li><button>...</button></li>` */
 	contextMenu: JSX.Element;
+
 	children: JSX.Element;
+
 	/** Whether the context menu should close when a menu item in it is clicked.
 	 *
 	 * Default's to false

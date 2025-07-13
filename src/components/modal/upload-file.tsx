@@ -2,20 +2,21 @@ import { createAsync } from "@solidjs/router";
 import FileIcon from "lucide-solid/icons/file";
 import { createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import { createStore } from "solid-js/store";
-import { FileHost, type FileHostImplementations } from "~/classes/file-host";
+import { FileHost } from "~/classes/file-host";
+import { ROOT_PATH } from "~/shared/constants";
+import type { FileHostImplementations } from "~/types/file-directory-file-host/file-host";
+import type {
+	AbsoluteDirectoryPath,
+	FileName,
+	RelativeDirectoryPath,
+} from "~/types/path";
+import { treatStringAsFileName } from "~/utils/file-name";
 import {
 	convertPathToString,
 	convertStringToPath,
 	isDirectoryPath,
 	isRelativePath,
-	treatStringAsFileName,
-} from "~/declarations/functions";
-import type {
-	AbsoluteDirectoryPath,
-	FileName,
-	RelativeDirectoryPath,
-} from "~/declarations/types";
-import { ROOT_PATH } from "~/declarations/variables";
+} from "~/utils/path";
 import LoadingSpinner from "../loading-spinner";
 import { closeModal, GenericModal } from "./modal";
 

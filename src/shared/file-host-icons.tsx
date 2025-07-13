@@ -1,10 +1,11 @@
 import type { JSX } from "solid-js";
-import { gFileHosts } from "./enums";
+import { FILE_HOSTS } from "./enums";
+
 export const gFileHostIcons: Record<
-	gFileHosts,
+	FILE_HOSTS,
 	(prop: { class?: string }) => JSX.Element
 > = {
-	[gFileHosts.MEGA]: (prop: { class?: string }) => {
+	[FILE_HOSTS.MEGA]: (prop: { class?: string }) => {
 		return (
 			<svg
 				role="img"

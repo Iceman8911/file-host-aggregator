@@ -1,22 +1,25 @@
 import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { Storage as MEGASyncStorage, File as MegaFile } from "megajs";
-import { gFileHosts } from "~/declarations/enums";
-import {
-	convertPathToString,
-	gIsUserConnectedToInternet,
-	gThrowIfNoInternet,
-} from "~/declarations/functions";
+import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/shared/constants";
+import { FILE_HOSTS } from "~/shared/enums";
 import type {
 	ClassPropsOnly,
 	ExtractValueTypeFromPromise,
+	ResultType,
+} from "~/types/generics";
+import type {
 	FileName,
 	RelativeDirectoryPath,
 	RelativeFilePath,
-	ResultType,
-} from "~/declarations/types";
-import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/declarations/variables";
-import { FileHost, FileHostFile } from "./file-host";
+} from "~/types/path";
+import {
+	gIsUserConnectedToInternet,
+	gThrowIfNoInternet,
+} from "~/utils/internet";
+import { convertPathToString } from "~/utils/path";
+import { FileHost } from "./file-host";
+import { FileHostFile } from "./file-host-file";
 
 const USER_AGENT = "FileHostAggregator/0.1";
 const MEGA_CONNECTION_ERROR_MESSAGE =
@@ -27,7 +30,7 @@ type AccountInfo = ExtractValueTypeFromPromise<
 >;
 
 export class MEGASyncFileHost extends FileHost {
-	type = gFileHosts.MEGA;
+	type = FILE_HOSTS.MEGA;
 
 	/** Minimum time in milliseconds before the caches are refreshed */
 	private static readonly _refreshCacheIn = 30000;
