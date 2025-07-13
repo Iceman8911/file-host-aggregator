@@ -16,6 +16,7 @@ import {
 	convertStringToPath,
 	isDirectoryPath,
 	isRelativePath,
+	isRootPath,
 } from "~/utils/path";
 import LoadingSpinner from "../loading-spinner";
 import { closeModal, GenericModal } from "./modal";
@@ -114,13 +115,19 @@ export default function UploadFileModal(prop: {
 							<legend class="fieldset-legend">Relative Path</legend>
 							<select
 								class="select select-primary"
-								required
 								onInput={({
 									target: { value: relativeDirectoryPathString },
 								}) => {
 									const untestedPath = convertStringToPath(
 										relativeDirectoryPathString,
 									);
+
+									if (isRootPath(untestedPath)) {
+										setUploadFileData({
+											relativePath: untestedPath,
+										});
+										return;
+									}
 
 									if (
 										isRelativePath(untestedPath) &&
@@ -130,6 +137,7 @@ export default function UploadFileModal(prop: {
 										setUploadFileData({
 											relativePath: testedPath,
 										});
+										return;
 									}
 								}}
 							>
@@ -140,7 +148,7 @@ export default function UploadFileModal(prop: {
 									}
 									value={convertPathToString(ROOT_PATH)}
 								>
-									Choose a directory to upload to
+									/
 								</option>
 
 								<Suspense>
@@ -164,14 +172,14 @@ export default function UploadFileModal(prop: {
 													}
 													value={iteratedDirRelativePathString()}
 												>
-													{iteratedDirRelativePathString()}
+													{`/${iteratedDirRelativePathString()}`}
 												</option>
 											);
 										}}
 									</For>
 								</Suspense>
 							</select>
-							<span class="label">Required</span>
+							{/* <span class="label">Required</span> */}
 						</fieldset>
 					);
 				}}

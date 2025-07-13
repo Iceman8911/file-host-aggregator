@@ -1,4 +1,4 @@
-import { FILE_HOST_ROOT } from "~/shared/constants";
+import { FILE_HOST_ROOT, ROOT_PATH } from "~/shared/constants";
 import type {
 	AbsoluteDirectoryPath,
 	AbsoluteFileOrDirectoryPath,
@@ -9,6 +9,7 @@ import type {
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
+	RootPath,
 } from "~/types/path";
 import { isFileName } from "./file-name";
 
@@ -97,4 +98,10 @@ export function isDirectoryPath(
 	if (!possiblePath.length) return false;
 
 	return !isFilePath(possiblePath);
+}
+
+export function isRootPath(
+	possiblePath: Readonly<AnyFileOrDirectoryPath>,
+): possiblePath is RootPath {
+	return possiblePath.toString() === ROOT_PATH.toString();
 }
