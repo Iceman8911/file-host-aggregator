@@ -1,21 +1,5 @@
 import type { FileHost } from "~/classes/file-host";
 
-// Utility Generics
-export type Brand<TType, TBrandName extends string> = TType & {
-	readonly __brand: TBrandName;
-};
-export type ResultType<TResult> =
-	| { state: "success"; result: TResult }
-	| { state: "error"; error: unknown };
-/** For getting all non-method properties of a class */
-export type ClassPropsOnly<T> = {
-	// biome-ignore lint/complexity: This is needs to be `Function`
-	[K in keyof T as T[K] extends Function ? never : K]: T[K];
-};
-export type ExtractValueTypeFromPromise<TPromise extends Promise<unknown>> =
-	TPromise extends Promise<infer TValue> ? TValue : never;
-
-// Regular Types
 /** Represents the path of a file from it's root (file host).
  *
  * Use `join("/")` to get the actual path: `""` */
