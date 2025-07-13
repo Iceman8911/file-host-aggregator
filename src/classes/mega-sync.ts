@@ -141,6 +141,21 @@ export class MEGASyncFileHost extends FileHost {
 				//@ts-expect-error This is actually alright, the type is justed botched
 				new Uint8Array(buffer),
 			).complete) as MutableFile;
+
+			// Create a new file host instance but no need to await it since it's not relevant to the returned value.
+			FileHostFile.init({
+				dateCreated: new Date(uploadedFile.createdAt),
+				fileData: await MEGASyncFileHost._downloadFileContent(
+					uploadedFile,
+					true,
+				),
+				fileHostId: this.id,
+				fileUrl: await uploadedFile.link({ noKey: false }),
+				name: uploadedFile.name ?? DEFAULT_FILE_NAME,
+				relativePath: path,
+				size: uploadedFile.size,
+			});
+
 			return {
 				state: "success",
 				result: new URL(await uploadedFile.link({ noKey: false })),
