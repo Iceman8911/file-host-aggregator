@@ -8,7 +8,7 @@ import SettingsIcon from "lucide-solid/icons/settings";
 import { For, type JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
-export default function Nav() {
+export default function NavigationSideBar() {
 	const DRAWER_WIDTH = "w-[60vw] sm:w-45 md:w-60";
 	const ROUTE_LINKS = [
 		{ icon: HouseIcon, name: "Home", route: "/" },
