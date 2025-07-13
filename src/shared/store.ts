@@ -12,4 +12,4 @@ const defaultSettings: Readonly<Settings> = {
 	compressOnSave: false,
 };
 
-export const [gSETTINGS, gSetSettings] = createStore<Settings>(defaultSettings);
+export const [gSettings, gSetSettings] = createStore<Settings>(defaultSettings);
