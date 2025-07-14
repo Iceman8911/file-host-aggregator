@@ -63,21 +63,21 @@ export abstract class FileHost {
 	}
 
 	static getRelativePathFromAbsolutePath(
-		filePath: AbsoluteDirectoryPath,
-	): RelativeDirectoryPath;
-	static getRelativePathFromAbsolutePath(
 		filePath: AbsoluteFilePath,
 	): RelativeFilePath;
+	static getRelativePathFromAbsolutePath(
+		filePath: AbsoluteDirectoryPath,
+	): RelativeDirectoryPath;
 	static getRelativePathFromAbsolutePath(
 		filePath: AbsoluteFileOrDirectoryPath,
 	): RelativeFileOrDirectoryPath {
 		return filePath.slice(2);
 	}
 
+	getAbsolutePathFromRelativePath(filePath: RelativeFilePath): AbsoluteFilePath;
 	getAbsolutePathFromRelativePath(
 		filePath: RelativeDirectoryPath,
 	): AbsoluteDirectoryPath;
-	getAbsolutePathFromRelativePath(filePath: RelativeFilePath): AbsoluteFilePath;
 	getAbsolutePathFromRelativePath(
 		filePath: RelativeFileOrDirectoryPath,
 	): AbsoluteFileOrDirectoryPath {
