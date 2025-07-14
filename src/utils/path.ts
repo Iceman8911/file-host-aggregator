@@ -1,21 +1,59 @@
 import { FILE_HOST_ROOT, ROOT_PATH } from "~/shared/constants";
 import type {
 	AbsoluteDirectoryPath,
+	AbsoluteDirectoryPathString,
 	AbsoluteFileOrDirectoryPath,
+	AbsoluteFileOrDirectoryPathString,
 	AbsoluteFilePath,
+	AbsoluteFilePathString,
 	AnyDirectoryPath,
+	AnyDirectoryPathString,
 	AnyFileOrDirectoryPath,
+	AnyFileOrDirectoryPathString,
 	AnyFilePath,
+	AnyFilePathString,
 	RelativeDirectoryPath,
+	RelativeDirectoryPathString,
 	RelativeFileOrDirectoryPath,
+	RelativeFileOrDirectoryPathString,
 	RelativeFilePath,
+	RelativeFilePathString,
 	RootPath,
+	RootPathString,
 } from "~/types/path";
 import { isFileName } from "./file-name";
 
 const pathSeperator = "/";
 const pathCache = new WeakMap<Readonly<AnyFileOrDirectoryPath>, string>();
 
+export function convertPathToString(path: Readonly<RootPath>): RootPathString;
+export function convertPathToString(
+	path: Readonly<AbsoluteFilePath>,
+): AbsoluteFilePathString;
+export function convertPathToString(
+	path: Readonly<AbsoluteDirectoryPath>,
+): AbsoluteDirectoryPathString;
+export function convertPathToString(
+	path: Readonly<AbsoluteFileOrDirectoryPath>,
+): AbsoluteFileOrDirectoryPathString;
+export function convertPathToString(
+	path: Readonly<RelativeFilePath>,
+): RelativeFilePathString;
+export function convertPathToString(
+	path: Readonly<RelativeDirectoryPath>,
+): RelativeDirectoryPathString;
+export function convertPathToString(
+	path: Readonly<RelativeFileOrDirectoryPath>,
+): RelativeFileOrDirectoryPathString;
+export function convertPathToString(
+	path: Readonly<AnyFilePath>,
+): AnyFilePathString;
+export function convertPathToString(
+	path: Readonly<AnyDirectoryPath>,
+): AnyDirectoryPathString;
+export function convertPathToString(
+	path: Readonly<AnyFileOrDirectoryPath>,
+): AnyFileOrDirectoryPathString;
 export function convertPathToString(
 	path: Readonly<AnyFileOrDirectoryPath>,
 ): string {
@@ -27,9 +65,38 @@ export function convertPathToString(
 }
 
 export function convertStringToPath(
-	pathString: Readonly<string>,
+	pathString: Readonly<AbsoluteFilePathString>,
+): AbsoluteFilePath;
+export function convertStringToPath(
+	pathString: Readonly<AbsoluteDirectoryPathString>,
+): AbsoluteDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<AbsoluteFileOrDirectoryPathString>,
+): AbsoluteFileOrDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<RelativeFilePathString>,
+): RelativeFilePath;
+export function convertStringToPath(
+	pathString: Readonly<RelativeDirectoryPathString>,
+): RelativeDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<RelativeFileOrDirectoryPathString>,
+): RelativeFileOrDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<AnyFilePathString>,
+): AnyFilePath;
+export function convertStringToPath(
+	pathString: Readonly<AnyDirectoryPathString>,
+): AnyDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<AnyFileOrDirectoryPathString>,
+): AnyFileOrDirectoryPath;
+export function convertStringToPath(
+	pathString: Readonly<unknown>,
 ): AnyFileOrDirectoryPath {
-	return pathString.split(pathSeperator);
+	return typeof pathString === "string"
+		? pathString.split(pathSeperator)
+		: ROOT_PATH;
 }
 
 export function isAbsolutePath(

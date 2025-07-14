@@ -1,4 +1,5 @@
 import type { FileHost } from "~/classes/file-host";
+import type { Brand } from "./generics";
 
 /** Represents the path of a file from it's root (file host).
  *
@@ -38,5 +39,33 @@ export type AnyDirectoryPath = RelativeDirectoryPath | AbsoluteDirectoryPath;
 export type AnyFileOrDirectoryPath =
 	| RelativeFileOrDirectoryPath
 	| AbsoluteFileOrDirectoryPath;
+
+export type RelativeFilePathString = Brand<string, "relative-file-path">;
+export type RelativeDirectoryPathString = Brand<
+	string,
+	"relative-directory-path"
+>;
+export type RelativeFileOrDirectoryPathString =
+	| RelativeFilePathString
+	| RelativeDirectoryPathString;
+
+export type AbsoluteFilePathString = Brand<string, "absolute-file-path">;
+export type AbsoluteDirectoryPathString = Brand<
+	string,
+	"absolute-directory-path"
+>;
+export type AbsoluteFileOrDirectoryPathString =
+	| AbsoluteFilePathString
+	| AbsoluteDirectoryPathString;
+
+export type AnyFilePathString = RelativeFilePathString | AbsoluteFilePathString;
+export type AnyDirectoryPathString =
+	| RelativeDirectoryPathString
+	| AbsoluteDirectoryPathString;
+export type AnyFileOrDirectoryPathString =
+	| RelativeFileOrDirectoryPathString
+	| AbsoluteFileOrDirectoryPathString;
+
+export type RootPathString = Brand<"", "root-path">;
 
 export type UUID = ReturnType<typeof crypto.randomUUID>;
