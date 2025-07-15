@@ -12,6 +12,7 @@ import type {
 	AnyFileOrDirectoryPathString,
 	AnyFilePath,
 	AnyFilePathString,
+	FileName,
 	RelativeDirectoryPath,
 	RelativeDirectoryPathString,
 	RelativeFileOrDirectoryPath,
@@ -171,4 +172,36 @@ export function isRootPath(
 	possiblePath: Readonly<AnyFileOrDirectoryPath>,
 ): possiblePath is RootPath {
 	return possiblePath.toString() === ROOT_PATH.toString();
+}
+
+export function getLastNameInPath(path: Readonly<AnyFilePath>): FileName;
+export function getLastNameInPath(path: Readonly<AnyDirectoryPath>): string;
+export function getLastNameInPath(
+	path: Readonly<AnyFileOrDirectoryPath>,
+): string;
+export function getLastNameInPath(
+	path: Readonly<AnyFileOrDirectoryPath>,
+): string {
+	return path[path.length - 1];
+}
+
+export function getParentDirectoryPaths(
+	path: Readonly<AbsoluteFileOrDirectoryPath>,
+): ReadonlyArray<AbsoluteDirectoryPath>;
+export function getParentDirectoryPaths(
+	path: Readonly<RelativeFileOrDirectoryPath>,
+): ReadonlyArray<RelativeDirectoryPath>;
+export function getParentDirectoryPaths(
+	path: Readonly<AnyFileOrDirectoryPath>,
+): ReadonlyArray<AnyDirectoryPath> {
+	// So that we won't include the 2 unnecessary values at the begining of an absolute paths
+	const indexToStopAt = isAbsolutePath(path) ? 2 : 0;
+
+	return path
+		.map((_, index, arr) => {
+			const indexToSlice = arr.length - index;
+
+			return indexToSlice > indexToStopAt ? arr.slice(0, indexToSlice) : null;
+		})
+		.filter((val) => val != null);
 }
