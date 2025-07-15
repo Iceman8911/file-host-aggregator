@@ -159,10 +159,10 @@ export abstract class FileHost {
 	/** Get's rid of non-existent files (i.e you deleted a file on the file host but it still exists on the client) */
 	abstract trimOutdatedCache(): Promise<void>;
 
-	/** Checks if the file exists as a local copy */
-	async hasFile(path: AbsoluteFilePath): Promise<boolean> {
-		return hfs.isFile(convertPathToString(path));
-	}
+	// /** Checks if the file exists as a local copy */
+	// async hasFile(path: AbsoluteFilePath): Promise<boolean> {
+	// 	return !!(await this.getFile(path));
+	// }
 
 	/** Retrieves the local copy of the file at the path given, if any */
 	async getFile(path: AbsoluteFilePath): Promise<FileHostFile | null> {
