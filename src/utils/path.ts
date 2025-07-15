@@ -89,7 +89,7 @@ export function convertStringToPath(
 	pathString: Readonly<AnyDirectoryPathString>,
 ): AnyDirectoryPath;
 export function convertStringToPath(
-	pathString: Readonly<AnyFileOrDirectoryPathString>,
+	pathString: Readonly<AnyFileOrDirectoryPathString | string>,
 ): AnyFileOrDirectoryPath;
 export function convertStringToPath(
 	pathString: Readonly<unknown>,

@@ -21,6 +21,9 @@ import type {
 } from "~/types/file-view";
 import type { AbsoluteDirectoryPath } from "~/types/path";
 import { quickSort } from "~/utils/async-quick-sort";
+import { isDirectory } from "~/utils/file-directory-file-host/directory";
+import { isFileHostFile } from "~/utils/file-directory-file-host/file";
+import { isFileHost } from "~/utils/file-directory-file-host/file-host";
 import { generateUUID } from "~/utils/other";
 import FileDetails from "../modal/file-details";
 import { showModal } from "../modal/modal";
@@ -217,8 +220,10 @@ export default function FileView() {
 				sortingOrder,
 				sortingParam,
 			],
+
 			async () => {
 				const originalFilesOrFileHosts = await _fetchedFilesOrFileHosts();
+
 				if (!originalFilesOrFileHosts) return [];
 
 				//@ts-expect-error Yeah, I messed up the types, but it works :D
@@ -228,13 +233,10 @@ export default function FileView() {
 					switch (sortingParam()) {
 						case "name": {
 							const nameOfA =
-								a instanceof FileHost || !(a instanceof FileHostFile)
-									? a.name
-									: a.metadata.name;
+								isFileHost(a) || isDirectory(a) ? a.name : a.metadata.name;
+
 							const nameOfB =
-								b instanceof FileHost || !(b instanceof FileHostFile)
-									? b.name
-									: b.metadata.name;
+								isFileHost(b) || isDirectory(b) ? b.name : b.metadata.name;
 
 							return (
 								sortingOrder() === "asc"
@@ -244,19 +246,19 @@ export default function FileView() {
 								? 1
 								: -1;
 						}
+
 						case "date": {
-							const dateOfA =
-								a instanceof FileHost
-									? a.dateCreated.getTime()
-									: a instanceof FileHostFile
-										? a.metadata.dateCreated.getTime()
-										: a.dateEdited.getTime();
-							const dateOfB =
-								b instanceof FileHost
-									? b.dateCreated.getTime()
-									: b instanceof FileHostFile
-										? b.metadata.dateCreated.getTime()
-										: b.dateEdited.getTime();
+							const dateOfA = isFileHost(a)
+								? a.dateCreated.getTime()
+								: isFileHostFile(a)
+									? a.metadata.dateCreated.getTime()
+									: a.dateEdited.getTime();
+
+							const dateOfB = isFileHost(b)
+								? b.dateCreated.getTime()
+								: isFileHostFile(b)
+									? b.metadata.dateCreated.getTime()
+									: b.dateEdited.getTime();
 
 							return (
 								sortingOrder() === "asc"
@@ -266,19 +268,19 @@ export default function FileView() {
 								? 1
 								: -1;
 						}
+
 						case "size": {
-							const sizeOfA =
-								a instanceof FileHost
-									? await a.spaceUsed()
-									: a instanceof FileHostFile
-										? a.metadata.size
-										: a.size;
-							const sizeOfB =
-								b instanceof FileHost
-									? b.dateCreated.getTime()
-									: b instanceof FileHostFile
-										? b.metadata.size
-										: b.size;
+							const sizeOfA = isFileHost(a)
+								? await a.spaceUsed()
+								: isFileHostFile(a)
+									? a.metadata.size
+									: a.size;
+
+							const sizeOfB = isFileHost(b)
+								? b.dateCreated.getTime()
+								: isFileHostFile(b)
+									? b.metadata.size
+									: b.size;
 
 							return (
 								sortingOrder() === "asc"
@@ -288,9 +290,11 @@ export default function FileView() {
 								? 1
 								: -1;
 						}
+
 						// TODO:
 						case "type":
 							return 0;
+
 						default:
 							return 0;
 					}
@@ -301,6 +305,7 @@ export default function FileView() {
 				 * This prolly happens since the array of files/directories/file hosts is cached and reused if the viewed directory doesn't change
 				 */
 				const result = [...(sorted ?? [])] as FilesOrDirectoriesOrFileHosts;
+
 				return result;
 			},
 		),

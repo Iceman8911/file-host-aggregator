@@ -11,6 +11,8 @@ import { FileHost } from "~/classes/file-host";
 import { FileHostFile } from "~/classes/file-host-file";
 import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host/file-directory-file-host";
 import type { RelativeFilePath } from "~/types/path";
+import { isDirectory } from "~/utils/file-directory-file-host/directory";
+import { isFileHostFile } from "~/utils/file-directory-file-host/file";
 import { downloadBlobToDisk } from "~/utils/other";
 import { FileView_Shared } from "../file-view";
 
@@ -18,9 +20,9 @@ export function FileView_ContextMenu(prop: {
 	data: FileOrDirectoryOrFileHost;
 }) {
 	async function downloadFileOrDirectoryToDisk() {
-		if (prop.data instanceof FileHostFile) {
+		if (isFileHostFile(prop.data)) {
 			prop.data.downloadFileToDisk();
-		} else if (!(prop.data instanceof FileHost)) {
+		} else if (isDirectory(prop.data)) {
 			const allDirContents =
 				(await FileHost.getFileHostFromAbsolutePath(
 					prop.data.path,
@@ -29,28 +31,35 @@ export function FileView_ContextMenu(prop: {
 			if (!allDirContents.length) return;
 
 			const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
+
 			const filesToArchivePromises: Array<
-				Promise<{ data: ArrayBuffer; path: RelativeFilePath }>
+				Promise<
+					{ data: ArrayBuffer; path: RelativeFilePath } | null | undefined
+				>
 			> = [];
 
 			for (const possibleFile of allDirContents) {
-				if (possibleFile instanceof FileHostFile) {
+				if (isFileHostFile(possibleFile)) {
 					// Don't individually wait on each request
 					filesToArchivePromises.push(
-						possibleFile.getFile().then((blob) =>
-							blob.arrayBuffer().then((buffer) => {
-								return {
-									data: buffer,
-									path: possibleFile.relativePath,
-								};
-							}),
-						),
+						possibleFile.getBlob().then((blob) => {
+							if (blob) {
+								blob.arrayBuffer().then((buffer) => {
+									return {
+										data: buffer,
+										path: possibleFile.metadata.relativePath,
+									};
+								});
+							} else {
+								return null;
+							}
+						}),
 					);
 				}
 			}
 
 			(await Promise.allSettled(filesToArchivePromises)).forEach((result) => {
-				if (result.status === "fulfilled") {
+				if (result.status === "fulfilled" && result.value) {
 					const {
 						value: { data, path },
 					} = result;
@@ -69,13 +78,13 @@ export function FileView_ContextMenu(prop: {
 	}
 
 	async function deleteFileOrDirectoryFromDiskAndFileHost() {
-		if (prop.data instanceof FileHostFile) {
-			const fileHost = prop.data.fileHost;
+		if (isFileHostFile(prop.data)) {
+			const fileHost = prop.data.metadata.fileHost;
 
 			if (fileHost) {
-				await fileHost.deleteFile(prop.data.relativePath);
+				await fileHost.deleteFile(prop.data.metadata.relativePath);
 			}
-		} else if (!(prop.data instanceof FileHost)) {
+		} else if (isDirectory(prop.data)) {
 			const fileHost = FileHost.getFileHostFromAbsolutePath(prop.data.path);
 
 			if (fileHost) {
@@ -173,7 +182,7 @@ function UniqueOptions(prop: { data: FileOrDirectoryOrFileHost }) {
 				{(file) => {
 					return (
 						<li>
-							<button type="button" onClick={(_) => file().getFile()}>
+							<button type="button" onClick={(_) => file().getBlob()}>
 								<DefaultFileIcon />
 								View
 							</button>

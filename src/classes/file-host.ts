@@ -3,7 +3,6 @@ import { ReactiveMap } from "@solid-primitives/map";
 import { stringify } from "@worker-tools/structured-json";
 import QuickLRU from "quick-lru";
 import {
-	DEFAULT_FILE_EXTENSION,
 	DEFAULT_FILE_HOST_EXTENSION,
 	FILE_HOST_ROOT,
 } from "~/shared/constants";

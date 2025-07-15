@@ -1,5 +1,4 @@
 import { FileHost } from "~/classes/file-host";
-import { FileHostFile } from "~/classes/file-host-file";
 import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host/file-directory-file-host";
 import type {
 	AbsoluteDirectoryPath,
@@ -8,6 +7,8 @@ import type {
 	RelativeFilePath,
 } from "~/types/path";
 import { convertPathToString } from "../path";
+import { isFileHostFile } from "./file";
+import { isFileHost } from "./file-host";
 
 type Size = {
 	/** In bytes */
@@ -69,7 +70,7 @@ export function getCommonPropsFromFileOrFileHostOrDirectory(
 		else return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB` as const;
 	};
 
-	if (obj instanceof FileHost) {
+	if (isFileHost(obj)) {
 		const name = obj.name;
 
 		return {
@@ -83,7 +84,7 @@ export function getCommonPropsFromFileOrFileHostOrDirectory(
 			}),
 			type: "file host",
 		};
-	} else if (obj instanceof FileHostFile) {
+	} else if (isFileHostFile(obj)) {
 		return {
 			dateCreated: obj.metadata.dateCreated,
 			name: obj.metadata.name,

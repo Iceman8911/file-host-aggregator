@@ -3,6 +3,7 @@ import { parse } from "@worker-tools/structured-json";
 import { FileHost } from "~/classes/file-host";
 import { DEFAULT_FILE_HOST_EXTENSION } from "~/shared/constants";
 import { FILE_HOSTS } from "~/shared/enums";
+import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host/file-directory-file-host";
 import type {
 	FileHostClassProps,
 	FileHostID,
@@ -45,4 +46,10 @@ export async function initFileHosts(): Promise<
 	}
 
 	return fileHosts;
+}
+
+export function isFileHost(
+	possibleFileHost: FileOrDirectoryOrFileHost,
+): possibleFileHost is FileHostImplementations {
+	return possibleFileHost instanceof FileHost;
 }
