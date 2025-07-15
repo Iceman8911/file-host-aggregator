@@ -2,7 +2,11 @@ import { hfs } from "@humanfs/web";
 import { ReactiveMap } from "@solid-primitives/map";
 import { stringify } from "@worker-tools/structured-json";
 import QuickLRU from "quick-lru";
-import { DEFAULT_FILE_EXTENSION, FILE_HOST_ROOT } from "~/shared/constants";
+import {
+	DEFAULT_FILE_EXTENSION,
+	DEFAULT_FILE_HOST_EXTENSION,
+	FILE_HOST_ROOT,
+} from "~/shared/constants";
 import type { FILE_HOSTS } from "~/shared/enums";
 import type { DirectoryStats } from "~/types/file-directory-file-host/directory";
 import type { FileOrDirectory } from "~/types/file-directory-file-host/file-directory-file-host";
@@ -409,12 +413,15 @@ export abstract class FileHost {
 	static root(
 		id: FileHostID,
 		getSaveLocation: true,
-	): [typeof FILE_HOST_ROOT, `${FileHostID}.${typeof DEFAULT_FILE_EXTENSION}`];
+	): [
+		typeof FILE_HOST_ROOT,
+		`${FileHostID}.${typeof DEFAULT_FILE_HOST_EXTENSION}`,
+	];
 	static root(id?: FileHostID, getSaveLocation = false) {
 		if (!id) return [FILE_HOST_ROOT];
 
 		return getSaveLocation
-			? [FILE_HOST_ROOT, `${id}.${DEFAULT_FILE_EXTENSION}`]
+			? [FILE_HOST_ROOT, `${id}.${DEFAULT_FILE_HOST_EXTENSION}`]
 			: [FILE_HOST_ROOT, id];
 	}
 

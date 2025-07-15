@@ -1,6 +1,7 @@
 import { hfs } from "@humanfs/web";
 import { parse } from "@worker-tools/structured-json";
 import { FileHost } from "~/classes/file-host";
+import { DEFAULT_FILE_HOST_EXTENSION } from "~/shared/constants";
 import { FILE_HOSTS } from "~/shared/enums";
 import type {
 	FileHostClassProps,
@@ -21,7 +22,7 @@ export async function initFileHosts(): Promise<
 	for await (const entry of hfs.list(convertPathToString(fileHostRoot()))) {
 		const { isFile, name } = entry;
 
-		if (name.endsWith(".bin") && isFile) {
+		if (name.endsWith(`.${DEFAULT_FILE_HOST_EXTENSION}`) && isFile) {
 			const fileHostId = name as FileHostID;
 			const props: FileHostClassProps = parse(
 				(await hfs.text(convertPathToString(fileHostRoot(fileHostId)))) ?? "",
