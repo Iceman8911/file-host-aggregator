@@ -14,6 +14,7 @@ import type {
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
 } from "~/types/path";
+import { treatStringAsFileName } from "~/utils/file-name";
 import {
 	gIsUserConnectedToInternet,
 	gThrowIfNoInternet,
@@ -133,32 +134,46 @@ export class MEGASyncFileHost extends FileHost {
 	): Promise<ResultType<URL>> {
 		try {
 			const _storage = await this._getStorage();
+
 			const folder = await this._getFolder(path, _storage.root);
+
 			const buffer = await file.arrayBuffer();
+
 			const bufferSize = buffer.maxByteLength;
+
 			const uploadedFile = (await folder.upload(
 				{ name, size: bufferSize },
 				//@ts-expect-error This is actually alright, the type is justed botched
 				new Uint8Array(buffer),
 			).complete) as MutableFile;
 
+			const fileUrl = new URL(await uploadedFile.link({ noKey: false }));
+			const fileName = treatStringAsFileName(
+				uploadedFile.name ?? DEFAULT_FILE_NAME,
+			);
+
 			// Create a new file host instance but no need to await it since it's not relevant to the returned value.
-			FileHostFile.init({
-				dateCreated: new Date(uploadedFile.createdAt),
-				fileData: await MEGASyncFileHost._downloadFileContent(
-					uploadedFile,
-					true,
-				),
-				fileHostId: this.id,
-				fileUrl: await uploadedFile.link({ noKey: false }),
-				name: uploadedFile.name ?? DEFAULT_FILE_NAME,
-				relativePath: path,
-				size: uploadedFile.size,
-			});
+			FileHostFile.init([
+				{
+					dateCreated: new Date(uploadedFile.createdAt),
+					// fileData: await MEGASyncFileHost._downloadFileContent(
+					// 	uploadedFile,
+					// 	true,
+					// ),
+					// fileHostId: this.id,
+					url: fileUrl,
+					name: fileName,
+					absolutePath: this.getAbsolutePathFromRelativePath([
+						...path,
+						fileName,
+					]),
+					size: uploadedFile.size ?? 0,
+				},
+			]);
 
 			return {
 				state: "success",
-				result: new URL(await uploadedFile.link({ noKey: false })),
+				result: fileUrl,
 			};
 		} catch (e) {
 			return { state: "error", error: e };
@@ -188,24 +203,36 @@ export class MEGASyncFileHost extends FileHost {
 
 	async downloadFiles(getMetadataOnly = true): Promise<void> {
 		const _storage = await this._getStorage();
+
 		const fileRefs = _storage.filter(() => true);
 
 		const processFile = async (
 			file: MutableFile,
 			relativePath: RelativeDirectoryPath,
 		) => {
-			await FileHostFile.init({
-				dateCreated: new Date(file.createdAt),
-				fileData: await MEGASyncFileHost._downloadFileContent(
-					file,
-					getMetadataOnly,
-				),
-				fileHostId: this.id,
-				fileUrl: await file.link({ noKey: false }),
-				name: file.name ?? DEFAULT_FILE_NAME,
-				relativePath,
-				size: file.size,
-			});
+			const fileName = treatStringAsFileName(file.name ?? DEFAULT_FILE_NAME);
+
+			const fileInstance = await FileHostFile.init([
+				{
+					dateCreated: new Date(file.createdAt),
+					// fileData: await MEGASyncFileHost._downloadFileContent(
+					// 	file,
+					// 	getMetadataOnly,
+					// ),
+					// fileHostId: this.id,
+					url: new URL(await file.link({ noKey: false })),
+					name: fileName,
+					absolutePath: this.getAbsolutePathFromRelativePath([
+						...relativePath,
+						fileName,
+					]),
+					size: file.size ?? 0,
+				},
+			]);
+
+			if (!getMetadataOnly) {
+				await fileInstance.getBlob(true);
+			}
 		};
 
 		const traverse = async (node: MutableFile, path: RelativeDirectoryPath) => {
@@ -237,13 +264,17 @@ export class MEGASyncFileHost extends FileHost {
 
 	async trimOutdatedCache(): Promise<void> {
 		const _storage = await this._getStorage();
+
 		const allFiles = await this.getAllFiles();
 
 		for (const file of allFiles) {
-			const possibleFileOnFileHost = _storage.root.navigate(file.relativePath);
+			const possibleFileOnFileHost = _storage.root.navigate(
+				file.metadata.relativePath,
+			);
+
 			if (!possibleFileOnFileHost) {
 				// The file doesn't exist on the server so ensure it isn't on the client too
-				await hfs.delete(convertPathToString(file.path));
+				await file.delete();
 			}
 		}
 

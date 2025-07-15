@@ -163,17 +163,7 @@ export abstract class FileHost {
 
 	/** Retrieves the local copy of the file at the path given, if any */
 	async getFile(path: AbsoluteFilePath): Promise<FileHostFile | null> {
-		const parsedPath = convertPathToString(path);
-		if (!(await hfs.isFile(parsedPath))) return null;
-
-		const possibleFileData = await hfs.bytes(parsedPath);
-
-		if (!possibleFileData) return null;
-
-		return FileHostFile.deserialize(
-			possibleFileData,
-			this as unknown as FileHostImplementations,
-		);
+		return FileHostFile.getInstance(path);
 	}
 
 	/** Returns all the files present in the local filesystem */
@@ -185,6 +175,7 @@ export abstract class FileHost {
 		})) {
 			filePromises.push(
 				this.getFile(
+					// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
 					[this.root(), entry.path.split("/")].flat() as AbsoluteFilePath,
 				),
 			);
@@ -203,6 +194,7 @@ export abstract class FileHost {
 		})) {
 			dirPromises.push(
 				this.getDirectoryStats(
+					// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
 					[root, entry.path.split("/")].flat() as AbsoluteDirectoryPath,
 				),
 			);
@@ -361,10 +353,10 @@ export abstract class FileHost {
 
 			for (const child of children) {
 				if (child instanceof FileHostFile) {
-					accumulatedStats.size += child.size;
+					accumulatedStats.size += child.metadata.size;
 					accumulatedStats.fileCount++;
-					if (child.dateCreated > accumulatedStats.dateEdited) {
-						accumulatedStats.dateEdited = child.dateCreated;
+					if (child.metadata.dateCreated > accumulatedStats.dateEdited) {
+						accumulatedStats.dateEdited = child.metadata.dateCreated;
 					}
 				} else {
 					accumulatedStats.folderCount++;

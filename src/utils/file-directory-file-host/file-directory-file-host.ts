@@ -85,16 +85,16 @@ export function getCommonPropsFromFileOrFileHostOrDirectory(
 		};
 	} else if (obj instanceof FileHostFile) {
 		return {
-			dateCreated: obj.dateCreated,
-			name: obj.name(true),
+			dateCreated: obj.metadata.dateCreated,
+			name: obj.metadata.name,
 			path: {
-				absolute: obj.path,
-				legiblePath: `${obj.fileHost?.name ?? ""}/${convertPathToString(obj.relativePath)}`,
-				relative: obj.relativePath,
+				absolute: obj.metadata.absolutePath,
+				legiblePath: `${obj.metadata.fileHost?.name ?? ""}/${convertPathToString(obj.metadata.relativePath)}`,
+				relative: obj.metadata.relativePath,
 			},
-			size: { parsed: convertBytes(obj.size), raw: obj.size },
+			size: { parsed: convertBytes(obj.metadata.size), raw: obj.metadata.size },
 			type: "file",
-			url: obj.url,
+			url: obj.metadata.url,
 		};
 	} else {
 		const relativePath = FileHost.getRelativePathFromAbsolutePath(obj.path);

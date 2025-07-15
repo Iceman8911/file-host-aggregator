@@ -230,11 +230,11 @@ export default function FileView() {
 							const nameOfA =
 								a instanceof FileHost || !(a instanceof FileHostFile)
 									? a.name
-									: a.name(true);
+									: a.metadata.name;
 							const nameOfB =
 								b instanceof FileHost || !(b instanceof FileHostFile)
 									? b.name
-									: b.name(true);
+									: b.metadata.name;
 
 							return (
 								sortingOrder() === "asc"
@@ -249,13 +249,13 @@ export default function FileView() {
 								a instanceof FileHost
 									? a.dateCreated.getTime()
 									: a instanceof FileHostFile
-										? a.dateCreated.getTime()
+										? a.metadata.dateCreated.getTime()
 										: a.dateEdited.getTime();
 							const dateOfB =
 								b instanceof FileHost
 									? b.dateCreated.getTime()
 									: b instanceof FileHostFile
-										? b.dateCreated.getTime()
+										? b.metadata.dateCreated.getTime()
 										: b.dateEdited.getTime();
 
 							return (
@@ -271,13 +271,13 @@ export default function FileView() {
 								a instanceof FileHost
 									? await a.spaceUsed()
 									: a instanceof FileHostFile
-										? a.size
+										? a.metadata.size
 										: a.size;
 							const sizeOfB =
 								b instanceof FileHost
 									? b.dateCreated.getTime()
 									: b instanceof FileHostFile
-										? b.size
+										? b.metadata.size
 										: b.size;
 
 							return (

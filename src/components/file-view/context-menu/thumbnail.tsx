@@ -42,27 +42,27 @@ export function FileView_Thumbnail(prop: { data: FileOrDirectoryOrFileHost }) {
 			<Match when={prop.data instanceof FileHostFile && prop.data}>
 				{(file) => (
 					<Switch fallback={<UnknownFileIcon />}>
-						<Match when={file().type === FILE_TYPE.ARCHIVE}>
+						<Match when={file().metadata.type === FILE_TYPE.ARCHIVE}>
 							<ArchiveFileIcon />
 						</Match>
 
-						<Match when={file().type === FILE_TYPE.AUDIO}>
+						<Match when={file().metadata.type === FILE_TYPE.AUDIO}>
 							<AudioFileIcon />
 						</Match>
 
-						<Match when={file().type === FILE_TYPE.DOCUMENT}>
+						<Match when={file().metadata.type === FILE_TYPE.DOCUMENT}>
 							<DocumentFileIcon />
 						</Match>
 
-						<Match when={file().type === FILE_TYPE.IMAGE}>
+						<Match when={file().metadata.type === FILE_TYPE.IMAGE}>
 							<ImageFileIcon />
 						</Match>
 
-						<Match when={file().type === FILE_TYPE.TEXT}>
+						<Match when={file().metadata.type === FILE_TYPE.TEXT}>
 							<TextFileIcon />
 						</Match>
 
-						<Match when={file().type === FILE_TYPE.VIDEO}>
+						<Match when={file().metadata.type === FILE_TYPE.VIDEO}>
 							<VideoFileIcon />
 						</Match>
 					</Switch>
