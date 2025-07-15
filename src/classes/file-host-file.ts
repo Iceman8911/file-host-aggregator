@@ -255,7 +255,7 @@ export class FileHostFile {
 	}
 
 	/** Indexed with the absolute path (converted to a string) */
-	static readonly collection = new QuickLRU<
+	private static readonly _collection = new QuickLRU<
 		AbsoluteFilePathString,
 		FileHostFile
 	>({
@@ -272,7 +272,7 @@ export class FileHostFile {
 	): Promise<FileHostFile | null> {
 		const pathString = convertPathToString(path);
 
-		const cachedInstance = FileHostFile.collection.get(pathString);
+		const cachedInstance = FileHostFile._collection.get(pathString);
 
 		if (cachedInstance) {
 			return cachedInstance;
@@ -297,7 +297,7 @@ export class FileHostFile {
 
 		const createdClassAbsolutePathString = createdClass._absolutePathString;
 
-		const existingClassIfAny = FileHostFile.collection.get(
+		const existingClassIfAny = FileHostFile._collection.get(
 			createdClassAbsolutePathString,
 		);
 
@@ -306,7 +306,10 @@ export class FileHostFile {
 			createdClass.metadata.dateCreated >
 				existingClassIfAny.metadata.dateCreated
 		) {
-			FileHostFile.collection.set(createdClassAbsolutePathString, createdClass);
+			FileHostFile._collection.set(
+				createdClassAbsolutePathString,
+				createdClass,
+			);
 
 			return createdClass;
 		}
@@ -371,7 +374,7 @@ export class FileHostFile {
 	async delete() {
 		const absolutePath = this.metadata.absolutePath;
 
-		FileHostFile.collection.delete(convertPathToString(absolutePath));
+		FileHostFile._collection.delete(convertPathToString(absolutePath));
 
 		await this.metadata.delete();
 
