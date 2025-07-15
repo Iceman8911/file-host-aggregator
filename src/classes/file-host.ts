@@ -26,6 +26,7 @@ import type {
 	RelativeFilePath,
 	RootPath,
 } from "~/types/path";
+import { treatStringAsFileName } from "~/utils/file-name";
 import { generateUUID } from "~/utils/other";
 import { convertPathToString, isAbsolutePath } from "~/utils/path";
 import { FileHostFile } from "./file-host-file";
@@ -239,13 +240,16 @@ export abstract class FileHost {
 		path: Readonly<AbsoluteFileOrDirectoryPath>,
 	): Promise<FileOrDirectory[] | null> {
 		const tempResult: FileOrDirectory[] = [];
+
 		const parsedPath = convertPathToString(path);
+
 		const cachedResult = this._dirContentCache.get(parsedPath);
 
 		if (cachedResult !== undefined) return cachedResult;
 
 		if (await hfs.isFile(parsedPath)) {
 			const filePath = path as AbsoluteFilePath;
+
 			const possibleFile = await this.getFile(filePath);
 
 			if (possibleFile) return [possibleFile];
@@ -254,14 +258,16 @@ export abstract class FileHost {
 		if (await hfs.isDirectory(parsedPath)) {
 			/** For concurrently storing the promises */
 			const filePromises: Promise<FileHostFile | null>[] = [];
+
 			const dirEntries: FileOrDirectory[] = [];
 
 			for await (const entry of hfs.list(parsedPath)) {
 				const { isDirectory, isFile, name: _name } = entry;
-				const name = _name as FileName;
+				const name = treatStringAsFileName(_name);
 
 				if (isFile) {
 					const filePath = [...path, name] as AbsoluteFilePath;
+
 					// Collect all getFile promises without awaiting them immediately
 					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
@@ -283,6 +289,7 @@ export abstract class FileHost {
 					tempResult.push(result.value);
 				}
 			}
+
 			tempResult.push(...dirEntries); // Add the directory entries
 		}
 
