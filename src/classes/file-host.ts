@@ -20,7 +20,6 @@ import type {
 	AbsoluteFilePath,
 	AnyDirectoryPath,
 	AnyFileOrDirectoryPath,
-	FileName,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
