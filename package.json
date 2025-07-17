@@ -27,6 +27,7 @@
 		"vinxi": "^0.5.3"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.1.2",
 		"@tailwindcss/vite": "^4.0.7",
 		"daisyui": "^5.0.43",
 		"tailwind-scrollbar": "^4.0.2",
