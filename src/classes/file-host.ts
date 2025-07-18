@@ -16,6 +16,7 @@ import type {
 import type { ResultType } from "~/types/generics";
 import type {
 	AbsoluteDirectoryPath,
+	AbsoluteDirectoryPathString,
 	AbsoluteFileOrDirectoryPath,
 	AbsoluteFileOrDirectoryPathString,
 	AbsoluteFilePath,
@@ -356,7 +357,7 @@ export abstract class FileHost {
 		return recursivelyGetDirContents(path, []);
 	}
 
-	private _directoryStatsCache = new QuickLRU<string, DirectoryStats>(
+	private _directoryStatsCache = new QuickLRU<AbsoluteDirectoryPathString, DirectoryStats>(
 		FileHost._cacheConfig,
 	);
 
@@ -366,7 +367,7 @@ export abstract class FileHost {
 	) {
 		if (specificRelativePathToClear.length) {
 			specificRelativePathToClear.forEach((path) =>
-				this._directoryStatsCache.delete(convertPathToString(path)),
+				this._directoryStatsCache.delete(convertPathToString(this.getAbsolutePathFromRelativePath(path))),
 			);
 		} else {
 			this._directoryStatsCache.clear();
