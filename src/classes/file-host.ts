@@ -17,19 +17,28 @@ import type { ResultType } from "~/types/generics";
 import type {
 	AbsoluteDirectoryPath,
 	AbsoluteFileOrDirectoryPath,
+	AbsoluteFileOrDirectoryPathString,
 	AbsoluteFilePath,
 	AnyDirectoryPath,
 	AnyFileOrDirectoryPath,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
+	RelativeFileOrDirectoryPathString,
 	RelativeFilePath,
-	RootPath,
 } from "~/types/path";
 import { treatStringAsFileName } from "~/utils/file-name";
 import { generateUUID } from "~/utils/other";
-import { convertPathToString, isAbsolutePath } from "~/utils/path";
+import {
+	convertPathToString,
+	convertStringToPath,
+	isAbsolutePath,
+	isFilePath,
+} from "~/utils/path";
 import { FileHostFile } from "./file-host-file";
 import { ReactiveLRU } from "./reactive-lru-cache";
+
+// type ReadonlyFileHostFile = Readonly<FileHostFile>;
+type NullishReadonlyFileHostFile = Readonly<FileHostFile | null>;
 
 /** Every file host (e.g Mega, MediaFire, etc) must implement this.
  *
@@ -101,7 +110,7 @@ export abstract class FileHost {
 	): AbsoluteDirectoryPath | ReturnType<FileHost["root"]>;
 	static getParentDirectoryFromPath(
 		filePath: RelativeFileOrDirectoryPath,
-	): RelativeDirectoryPath | RootPath;
+	): RelativeDirectoryPath;
 	static getParentDirectoryFromPath(
 		filePath: AnyFileOrDirectoryPath,
 	): AnyDirectoryPath {
@@ -171,9 +180,7 @@ export abstract class FileHost {
 	// }
 
 	/** Retrieves the local copy of the file at the path given, if any */
-	async getFile(
-		path: AbsoluteFilePath,
-	): Promise<Readonly<FileHostFile | null>> {
+	async getFile(path: AbsoluteFilePath): Promise<NullishReadonlyFileHostFile> {
 		return FileHostFile.getInstance(path);
 	}
 
@@ -184,12 +191,16 @@ export abstract class FileHost {
 		for await (const entry of hfs.walk(convertPathToString(this.root()), {
 			entryFilter: (entry) => entry.isFile,
 		})) {
-			filePromises.push(
-				this.getFile(
-					// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
-					[this.root(), entry.path.split("/")].flat() as AbsoluteFilePath,
-				),
-			);
+			const entryPath = convertStringToPath(entry.path);
+
+			if (isFilePath(entryPath)) {
+				filePromises.push(
+					this.getFile(
+						// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
+						[...this.root(), ...entryPath],
+					),
+				);
+			}
 		}
 
 		return (await Promise.allSettled(filePromises)).reduce<FileHostFile[]>(
@@ -205,8 +216,9 @@ export abstract class FileHost {
 	}
 
 	/** Returns all the directories present in the local filesystem */
-	async getAllDirectories(): Promise<DirectoryStats[]> {
+	async getAllDirectories(): Promise<ReadonlyArray<DirectoryStats>> {
 		const dirPromises: Promise<DirectoryStats | null>[] = [];
+
 		const root = this.root();
 
 		for await (const entry of hfs.walk(convertPathToString(root), {
@@ -215,7 +227,7 @@ export abstract class FileHost {
 			dirPromises.push(
 				this.getDirectoryStats(
 					// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
-					[root, entry.path.split("/")].flat() as AbsoluteDirectoryPath,
+					[...root, ...entry.path.split("/")],
 				),
 			);
 		}
@@ -224,17 +236,18 @@ export abstract class FileHost {
 	}
 
 	/** Caches the results of `.getDirContents()` */
-	private _dirContentCache = new ReactiveLRU<string, FileOrDirectory[] | null>(
-		FileHost._cacheConfig,
-	);
+	private _dirContentCache = new ReactiveLRU<
+		AbsoluteFileOrDirectoryPathString,
+		FileOrDirectory[] | null
+	>(FileHost._cacheConfig);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
 	clearDirContentCache(
-		...specificRelativePathToClear: RelativeDirectoryPath[]
+		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
 	) {
 		if (specificRelativePathToClear.length) {
 			specificRelativePathToClear.forEach((path) =>
-				this._dirContentCache.delete(convertPathToString(path)),
+				this._dirContentCache.delete(convertPathToString(this.getAbsolutePathFromRelativePath(path))),
 			);
 		} else {
 			// Just clear the entire cache
@@ -248,10 +261,11 @@ export abstract class FileHost {
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(
 		path: Readonly<AbsoluteDirectoryPath>,
-	): Promise<FileOrDirectory[] | null> {
+	): Promise<Readonly<FileOrDirectory[] | null>> {
 		const tempResult: FileOrDirectory[] = [];
 
-		const parsedPath = convertPathToString(path);
+		const parsedPath = convertPathToString(path
+		);
 
 		const cachedResult = this._dirContentCache.get(parsedPath);
 
@@ -331,6 +345,7 @@ export abstract class FileHost {
 					accumulatedContents.push(child);
 				} else {
 					accumulatedContents.push(child);
+
 					await recursivelyGetDirContents(child.path, accumulatedContents);
 				}
 			}
@@ -347,7 +362,7 @@ export abstract class FileHost {
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
 	clearDirectoryStatsCache(
-		...specificRelativePathToClear: RelativeDirectoryPath[]
+		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
 	) {
 		if (specificRelativePathToClear.length) {
 			specificRelativePathToClear.forEach((path) =>
@@ -367,6 +382,7 @@ export abstract class FileHost {
 			accumulatedStats: DirectoryStats,
 		): Promise<DirectoryStats> => {
 			const directoryPathString = convertPathToString(directoryPath);
+
 			const cachedStats = this._directoryStatsCache.get(directoryPathString);
 
 			if (cachedStats) return cachedStats;
@@ -378,24 +394,31 @@ export abstract class FileHost {
 			for (const child of children) {
 				if (child instanceof FileHostFile) {
 					accumulatedStats.size += child.metadata.size;
+
 					accumulatedStats.fileCount++;
 					if (child.metadata.dateCreated > accumulatedStats.dateEdited) {
 						accumulatedStats.dateEdited = child.metadata.dateCreated;
 					}
 				} else {
 					accumulatedStats.folderCount++;
+
 					const childPath: AbsoluteDirectoryPath = [
 						...directoryPath,
 						child.name,
 					];
 					accumulatedStats.path = [...directoryPath];
+
 					const childStats = await recursivelyGetDirectoryStats(childPath, {
 						...accumulatedStats,
 						path: childPath,
 					});
+
 					accumulatedStats.size += childStats.size;
+
 					accumulatedStats.fileCount += childStats.fileCount;
+
 					accumulatedStats.folderCount += childStats.folderCount;
+
 					if (childStats.dateEdited > accumulatedStats.dateEdited) {
 						accumulatedStats.dateEdited = childStats.dateEdited;
 					}
@@ -419,6 +442,7 @@ export abstract class FileHost {
 
 	clearAllCaches() {
 		this.clearDirContentCache();
+
 		this.clearDirectoryStatsCache();
 	}
 
@@ -428,21 +452,21 @@ export abstract class FileHost {
 	 *
 	 * e.g `/file_host/123po12`
 	 */
-	static root(): [typeof FILE_HOST_ROOT];
-	static root(id: FileHostID): [typeof FILE_HOST_ROOT, FileHostID];
+	static root(): readonly [typeof FILE_HOST_ROOT];
+	static root(id: FileHostID): readonly [typeof FILE_HOST_ROOT, FileHostID];
 	static root(
 		id: FileHostID,
 		getSaveLocation: true,
-	): [
+	): readonly [
 		typeof FILE_HOST_ROOT,
 		`${FileHostID}.${typeof DEFAULT_FILE_HOST_EXTENSION}`,
 	];
 	static root(id?: FileHostID, getSaveLocation = false) {
-		if (!id) return [FILE_HOST_ROOT];
+		if (!id) return [FILE_HOST_ROOT] as const;
 
 		return getSaveLocation
-			? [FILE_HOST_ROOT, `${id}.${DEFAULT_FILE_HOST_EXTENSION}`]
-			: [FILE_HOST_ROOT, id];
+			? ([FILE_HOST_ROOT, `${id}.${DEFAULT_FILE_HOST_EXTENSION}`] as const)
+			: ([FILE_HOST_ROOT, id] as const);
 	}
 
 	/** Returns the directory that contains all files for the filehost.

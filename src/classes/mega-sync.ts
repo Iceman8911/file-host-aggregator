@@ -40,7 +40,7 @@ export class MEGASyncFileHost extends FileHost {
 		null;
 
 	constructor(
-		public name: string,
+		public override name: string,
 		public email: string,
 		public password: string,
 		private _storage: typeof MEGASyncStorage.prototype | null,
@@ -268,9 +268,9 @@ export class MEGASyncFileHost extends FileHost {
 		const allFiles = await this.getAllFiles();
 
 		for (const file of allFiles) {
-			const possibleFileOnFileHost = _storage.root.navigate(
-				file.metadata.relativePath,
-			);
+			const possibleFileOnFileHost = _storage.root.navigate([
+				...file.metadata.relativePath,
+			]);
 
 			if (!possibleFileOnFileHost) {
 				// The file doesn't exist on the server so ensure it isn't on the client too
@@ -312,7 +312,7 @@ export class MEGASyncFileHost extends FileHost {
 		permanent = false,
 	) {
 		const _storage = await this._getStorage();
-		const fileToDelete = _storage.root.navigate(fileOrDir);
+		const fileToDelete = _storage.root.navigate([...fileOrDir]);
 		if (!fileToDelete) return false;
 
 		await fileToDelete.delete(permanent);

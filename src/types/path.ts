@@ -4,7 +4,7 @@ import type { Brand } from "./generics";
 /** Represents the path of a file from it's root (file host).
  *
  * Use `join("/")` to get the actual path: `""` */
-export type RootPath = [];
+export type RootPath = Readonly<[]>;
 /** The name and extension */
 export type FileName = `${string}.${string}`;
 /** Just a simple string. No branded nonsense for now */
@@ -12,9 +12,9 @@ export type DirectoryName = string;
 export type FileOrDirectoryName = DirectoryName | FileName;
 
 /** Use `join("/")` to get the actual path */
-type FilePath = [...DirectoryName[], FileName];
+type FilePath = readonly [...DirectoryName[], FileName];
 /** Use `join("/")` to get the actual path */
-type DirectoryPath = DirectoryName[];
+type DirectoryPath = readonly DirectoryName[];
 type FileOrDirectoryPath = FilePath | DirectoryPath;
 
 // The relative paths map to the root of the file host, and model how the file / directory exists on the file host.
@@ -23,11 +23,11 @@ export type RelativeDirectoryPath = DirectoryPath;
 export type RelativeFileOrDirectoryPath = FileOrDirectoryPath;
 
 // The absolute paths are only used locally in the OPFS
-export type AbsoluteFilePath = [
+export type AbsoluteFilePath = readonly [
 	...ReturnType<typeof FileHost.prototype.root>,
 	...FilePath,
 ];
-export type AbsoluteDirectoryPath = [
+export type AbsoluteDirectoryPath = readonly [
 	...ReturnType<typeof FileHost.prototype.root>,
 	...DirectoryPath,
 ];
