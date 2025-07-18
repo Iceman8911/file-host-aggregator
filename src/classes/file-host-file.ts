@@ -189,7 +189,7 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 		return hfs.delete(convertPathToString(this.absolutePath));
 	}
 
-	private _serialize(): string {
+	private _serialize(): Readonly<string> {
 		return stringify({ ...this });
 	}
 
@@ -197,7 +197,9 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 		await hfs.write(convertPathToString(this.absolutePath), this._serialize());
 	}
 
-	private static _deserialize(serializedString: string): FileHostFileMetadata {
+	private static _deserialize(
+		serializedString: string,
+	): Readonly<FileHostFileMetadata> {
 		try {
 			const data: FileHostFileMetadataProps = parse(serializedString);
 			const { absolutePath, dateCreated, name, size, url } = data;
@@ -219,7 +221,7 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 
 	static async loadFromDisk(
 		path: AbsoluteFilePath,
-	): Promise<FileHostFileMetadata | null> {
+	): Promise<Readonly<FileHostFileMetadata | null>> {
 		const serializedData = await hfs.text(convertPathToString(path));
 
 		if (serializedData) {
@@ -232,7 +234,7 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 	/** Initializes the class and saves the data to disk */
 	static async init(
 		arg: FileHostFileMetadataProps,
-	): Promise<FileHostFileMetadata> {
+	): Promise<Readonly<FileHostFileMetadata>> {
 		const instance = new FileHostFileMetadata(arg);
 
 		await instance.saveToDisk();
@@ -241,6 +243,9 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 	}
 }
 
+type ReadonlyFileHostFile = Readonly<FileHostFile>;
+type NullishReadonlyFileHostFile = Readonly<FileHostFile | null>;
+
 /** Wrapper class that exposes file metadata and content, with extra utilities.
  *
  * This class is not serialized by itself, just it's metadata and associated blob content
@@ -248,7 +253,7 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
  * Do not intialize this directly. Use the static `.init()` method.
  */
 export class FileHostFile {
-	constructor(readonly metadata: FileHostFileMetadata) {}
+	constructor(readonly metadata: Readonly<FileHostFileMetadata>) {}
 
 	/** Indexed with the absolute path (converted to a string) */
 	private static readonly _collection = new QuickLRU<
@@ -265,7 +270,7 @@ export class FileHostFile {
 	 */
 	static async getInstance(
 		path: AbsoluteFilePath,
-	): Promise<FileHostFile | null> {
+	): Promise<NullishReadonlyFileHostFile> {
 		const pathString = convertPathToString(path);
 
 		const cachedInstance = FileHostFile._collection.get(pathString);
@@ -286,7 +291,7 @@ export class FileHostFile {
 	 */
 	static async init(
 		metadataArgs: ConstructorParameters<typeof FileHostFileMetadata>,
-	): Promise<FileHostFile> {
+	): Promise<ReadonlyFileHostFile> {
 		const createdClass = new FileHostFile(
 			await FileHostFileMetadata.init(...metadataArgs),
 		);
@@ -318,7 +323,7 @@ export class FileHostFile {
 	/** Load up a single instance (if any) based off the absolute path in the opfs */
 	private static async _initFromDisk(
 		path: AbsoluteFilePath,
-	): Promise<FileHostFile | null> {
+	): Promise<NullishReadonlyFileHostFile> {
 		const restoredMetadata = await FileHostFileMetadata.loadFromDisk(path);
 
 		if (restoredMetadata) {
@@ -332,7 +337,7 @@ export class FileHostFile {
 	 *
 	 * @param [forceRefresh=false] If true, an updated file is requested from the server if an internet connection is available, otherwise, the cache is used
 	 */
-	async getBlob(forceRefresh = false): Promise<Blob | null> {
+	async getBlob(forceRefresh = false): Promise<Readonly<Blob | null>> {
 		const cachedBlob = await fileContentCacheService.get(
 			this.metadata.absolutePath,
 		);
