@@ -254,7 +254,7 @@ export abstract class FileHost {
 
 			for await (const entry of hfs.list(parsedPath)) {
 				const { isDirectory, isFile, name: _name } = entry;
-				const name = treatStringAsFileName(_name);
+				const name = isFile ? treatStringAsFileName(_name) : _name;
 
 				if (isFile) {
 					const filePath = [...path, name] as AbsoluteFilePath;
