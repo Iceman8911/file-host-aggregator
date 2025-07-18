@@ -1,4 +1,7 @@
-export async function gIsUserConnectedToInternet(): Promise<boolean> {
+import { query } from "@solidjs/router";
+import { QUERY_NAME } from "~/shared/enums";
+
+async function isUserConnectedToInternet(): Promise<boolean> {
 	try {
 		const response = await fetch("https://www.gstatic.com/generate_204", {
 			method: "POST",
@@ -11,6 +14,12 @@ export async function gIsUserConnectedToInternet(): Promise<boolean> {
 		return false;
 	}
 }
+
+/** A `query()` for auto-deduping */
+export const gIsUserConnectedToInternet = query(
+	isUserConnectedToInternet,
+	QUERY_NAME.IS_CONNECTED,
+);
 
 export async function gThrowIfNoInternet(): Promise<void> {
 	if (!(await gIsUserConnectedToInternet()))

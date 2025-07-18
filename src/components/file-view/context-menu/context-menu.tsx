@@ -1,4 +1,4 @@
-import { createAsync, query } from "@solidjs/router";
+import { createAsync } from "@solidjs/router";
 import CopyIcon from "lucide-solid/icons/copy";
 import DownloadIcon from "lucide-solid/icons/download";
 import DefaultFileIcon from "lucide-solid/icons/file";
@@ -98,9 +98,7 @@ export function FileView_ContextMenu(prop: {
 		}
 	}
 
-	const connectionQuery = query(gIsUserConnectedToInternet, "isConnected");
-
-	const hasStableInternet = createAsync(() => connectionQuery(), {
+	const hasStableInternet = createAsync(() => gIsUserConnectedToInternet(), {
 		initialValue: false,
 	});
 

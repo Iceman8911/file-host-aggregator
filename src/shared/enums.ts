@@ -19,3 +19,8 @@ export enum FILE_TYPE {
 	DOCUMENT = "doc",
 	OTHER = "bin",
 }
+
+/** For keeping track of queries */
+export enum QUERY_NAME {
+	IS_CONNECTED = "isConnected",
+}
