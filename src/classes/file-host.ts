@@ -113,11 +113,14 @@ export abstract class FileHost {
 		return filePath.slice(0, -1);
 	}
 
-	/** Deletes the file host from the disk and memory. */
+	/** Deletes the file host and all it's contents from the disk and memory. */
 	async deleteInstance(): Promise<void> {
-		await hfs.delete(convertPathToString(this.root()));
-
 		FileHost.collection.delete(this.id);
+
+		await Promise.allSettled([
+			hfs.delete(convertPathToString(FileHost.root(this.id, true))),
+			hfs.deleteAll(convertPathToString(this.root())),
+		]);
 	}
 
 	/** Downloads and caches all files (or only their metadata) from the file host, as `FileHostFile` instances into the file system.
