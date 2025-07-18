@@ -16,6 +16,7 @@ import { gIsUserConnectedToInternet } from "~/utils/internet";
 import { downloadBlobToDisk } from "~/utils/other";
 import { convertPathToString } from "~/utils/path";
 import { FileHost } from "./file-host";
+import { ReactiveLRU } from "./reactive-lru-cache";
 
 /** For managing the cache containing the actual file content.
  */
@@ -256,7 +257,7 @@ export class FileHostFile {
 	constructor(readonly metadata: Readonly<FileHostFileMetadata>) {}
 
 	/** Indexed with the absolute path (converted to a string) */
-	private static readonly _collection = new QuickLRU<
+	private static readonly _collection = new ReactiveLRU<
 		AbsoluteFilePathString,
 		FileHostFile
 	>({

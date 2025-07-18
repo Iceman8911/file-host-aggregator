@@ -441,10 +441,11 @@ export abstract class FileHost {
 		});
 	}
 
-	clearAllCaches() {
-		this.clearDirContentCache();
+	/** Clears specific entries in the catches or all the caches */
+	clearAllCaches(...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>) {
+		this.clearDirContentCache(...specificRelativePathToClear);
 
-		this.clearDirectoryStatsCache();
+		this.clearDirectoryStatsCache(...specificRelativePathToClear);
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
