@@ -29,6 +29,7 @@ import { treatStringAsFileName } from "~/utils/file-name";
 import { generateUUID } from "~/utils/other";
 import { convertPathToString, isAbsolutePath } from "~/utils/path";
 import { FileHostFile } from "./file-host-file";
+import { ReactiveLRU } from "./reactive-lru-cache";
 
 /** Every file host (e.g Mega, MediaFire, etc) must implement this.
  *
@@ -39,16 +40,18 @@ import { FileHostFile } from "./file-host-file";
  */
 export abstract class FileHost {
 	readonly id: FileHostID = generateUUID<FileHostID>();
-	dateCreated = new Date();
-	abstract readonly type: FILE_HOSTS;
 
-	/** In memory collection of all created file hosts */
-	static collection = new ReactiveMap<FileHostID, FileHostImplementations>();
+	dateCreated = new Date();
+
+	abstract readonly type: FILE_HOSTS;
 
 	private static readonly _cacheConfig = {
 		maxSize: 100,
 		maxAge: 300000,
 	} as const;
+
+	/** In memory collection of all created file hosts */
+	static collection = new ReactiveMap<FileHostID, FileHostImplementations>();
 
 	constructor(public name: string) {}
 
@@ -207,7 +210,7 @@ export abstract class FileHost {
 	}
 
 	/** Caches the results of `.getDirContents()` */
-	private _dirContentCache = new QuickLRU<string, FileOrDirectory[] | null>(
+	private _dirContentCache = new ReactiveLRU<string, FileOrDirectory[] | null>(
 		FileHost._cacheConfig,
 	);
 
@@ -227,7 +230,7 @@ export abstract class FileHost {
 
 	/** Returns all the files and directories in the directory at the path given.
 	 *
-	 *  @param path - ensure that the path given to it is relative to the OPFS root
+	 *  @param path - ensure that the path given to it is absolute to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(
 		path: Readonly<AbsoluteDirectoryPath>,
