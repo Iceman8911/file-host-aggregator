@@ -12,7 +12,9 @@ import type {
 	AnyFileOrDirectoryPathString,
 	AnyFilePath,
 	AnyFilePathString,
+	DirectoryName,
 	FileName,
+	FileOrDirectoryName,
 	RelativeDirectoryPath,
 	RelativeDirectoryPathString,
 	RelativeFileOrDirectoryPath,
@@ -174,14 +176,16 @@ export function isRootPath(
 	return possiblePath.toString() === ROOT_PATH.toString();
 }
 
-export function getLastNameInPath(path: Readonly<AnyFilePath>): FileName;
-export function getLastNameInPath(path: Readonly<AnyDirectoryPath>): string;
-export function getLastNameInPath(
+export function getNameFromPath(path: Readonly<AnyFilePath>): FileName;
+export function getNameFromPath(
+	path: Readonly<AnyDirectoryPath>,
+): DirectoryName;
+export function getNameFromPath(
 	path: Readonly<AnyFileOrDirectoryPath>,
-): string;
-export function getLastNameInPath(
+): FileOrDirectoryName;
+export function getNameFromPath(
 	path: Readonly<AnyFileOrDirectoryPath>,
-): string {
+): FileOrDirectoryName {
 	return path[path.length - 1];
 }
 
