@@ -171,7 +171,9 @@ export abstract class FileHost {
 	// }
 
 	/** Retrieves the local copy of the file at the path given, if any */
-	async getFile(path: AbsoluteFilePath): Promise<FileHostFile | null> {
+	async getFile(
+		path: AbsoluteFilePath,
+	): Promise<Readonly<FileHostFile | null>> {
 		return FileHostFile.getInstance(path);
 	}
 

@@ -250,10 +250,6 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 export class FileHostFile {
 	constructor(readonly metadata: FileHostFileMetadata) {}
 
-	private get _absolutePathString(): AbsoluteFilePathString {
-		return convertPathToString(this.metadata.absolutePath);
-	}
-
 	/** Indexed with the absolute path (converted to a string) */
 	private static readonly _collection = new QuickLRU<
 		AbsoluteFilePathString,
@@ -295,7 +291,9 @@ export class FileHostFile {
 			await FileHostFileMetadata.init(...metadataArgs),
 		);
 
-		const createdClassAbsolutePathString = createdClass._absolutePathString;
+		const createdClassAbsolutePathString = convertPathToString(
+			createdClass.metadata.absolutePath,
+		);
 
 		const existingClassIfAny = FileHostFile._collection.get(
 			createdClassAbsolutePathString,
