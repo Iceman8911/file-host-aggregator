@@ -176,7 +176,7 @@ export abstract class FileHost {
 	}
 
 	/** Returns all the files present in the local filesystem */
-	async getAllFiles(): Promise<FileHostFile[]> {
+	async getAllFiles(): Promise<ReadonlyArray<FileHostFile>> {
 		const filePromises: Promise<FileHostFile | null>[] = [];
 
 		for await (const entry of hfs.walk(convertPathToString(this.root()), {
@@ -190,7 +190,16 @@ export abstract class FileHost {
 			);
 		}
 
-		return (await Promise.all(filePromises)).filter((val) => val != null);
+		return (await Promise.allSettled(filePromises)).reduce<FileHostFile[]>(
+			(acc, val) => {
+				if (val.status === "fulfilled" && val.value != null) {
+					acc.push(val.value);
+				}
+
+				return acc;
+			},
+			[],
+		);
 	}
 
 	/** Returns all the directories present in the local filesystem */
