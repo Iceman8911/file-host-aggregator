@@ -19,7 +19,6 @@ import type {
 	FilesOrDirectoriesOrFileHosts,
 	FileView_Settings,
 } from "~/types/file-view";
-import type { AbsoluteDirectoryPath } from "~/types/path";
 import { quickSort } from "~/utils/async-quick-sort";
 import { isDirectory } from "~/utils/file-directory-file-host/directory";
 import { isFileHostFile } from "~/utils/file-directory-file-host/file";
@@ -119,9 +118,7 @@ export default function FileView() {
 	onMount(async () => {
 		const cacheFileHostRootContents = async () => {
 			const promises = fileHostArray().map((host) =>
-				host.getDirContents(
-					[host.root(), ROOT_PATH].flat() as AbsoluteDirectoryPath,
-				),
+				host.getDirContents([...host.root(), ...ROOT_PATH]),
 			);
 
 			return await Promise.all(promises);
@@ -188,7 +185,7 @@ export default function FileView() {
 	);
 
 	const _fetchedFilesOrFileHosts = createMemo<
-		Promise<FilesOrDirectoriesOrFileHosts>
+		Promise<Readonly<FilesOrDirectoriesOrFileHosts>>
 	>(() => {
 		const fileHost = () => fileViewSettings.pathData.fileHost;
 		const relativePath = () => fileViewSettings.pathData.relativePath;
@@ -197,9 +194,10 @@ export default function FileView() {
 			// Workaround for typescript to know that the function call isn't null
 			const fileHostVar = fileHost() as FileHostImplementations;
 
-			return fileHostVar.getDirContents(
-				[fileHostVar.root(), relativePath()].flat() as AbsoluteDirectoryPath,
-			);
+			return fileHostVar.getDirContents([
+				...fileHostVar.root(),
+				...relativePath(),
+			]);
 		}
 
 		return Promise.resolve(fileHostArray());

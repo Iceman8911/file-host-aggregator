@@ -40,40 +40,42 @@ async function getPivot<TElement>(
  * @returns {Promise.<*>}
  */
 export async function quickSort<TArrayElement>(
-	arr: TArrayElement[],
+	arr: ReadonlyArray<TArrayElement>,
 	compare: (a: TArrayElement, b: TArrayElement) => Promise<number>,
 	left = 0,
 	right = arr.length - 1,
-) {
+): Promise<ReadonlyArray<TArrayElement>> {
+	const arrCopy = [...arr];
+
 	if (left < right) {
 		let i = left,
 			j = right,
 			tmp: TArrayElement;
 		const pivot = await getPivot(
-			arr[i],
-			arr[i + Math.floor((j - i) / 2)],
-			arr[j],
+			arrCopy[i],
+			arrCopy[i + Math.floor((j - i) / 2)],
+			arrCopy[j],
 			compare,
 		);
 		while (true) {
-			while ((await compare(arr[i], pivot)) < 0) {
+			while ((await compare(arrCopy[i], pivot)) < 0) {
 				i++;
 			}
-			while ((await compare(pivot, arr[j])) < 0) {
+			while ((await compare(pivot, arrCopy[j])) < 0) {
 				j--;
 			}
 			if (i >= j) {
 				break;
 			}
-			tmp = arr[i];
-			arr[i] = arr[j];
-			arr[j] = tmp;
+			tmp = arrCopy[i];
+			arrCopy[i] = arrCopy[j];
+			arrCopy[j] = tmp;
 
 			i++;
 			j--;
 		}
-		await quickSort(arr, compare, left, i - 1);
-		await quickSort(arr, compare, j + 1, right);
+		await quickSort(arrCopy, compare, left, i - 1);
+		await quickSort(arrCopy, compare, j + 1, right);
 	}
-	return arr;
+	return arrCopy;
 }
