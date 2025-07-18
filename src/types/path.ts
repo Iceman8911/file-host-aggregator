@@ -9,6 +9,7 @@ export type RootPath = [];
 export type FileName = `${string}.${string}`;
 /** Just a simple string. No branded nonsense for now */
 export type DirectoryName = string;
+export type FileOrDirectoryName = DirectoryName | FileName;
 
 /** Use `join("/")` to get the actual path */
 type FilePath = [...DirectoryName[], FileName];

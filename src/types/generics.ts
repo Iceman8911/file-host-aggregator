@@ -14,3 +14,9 @@ export type ClassPropsOnly<T> = {
 
 export type ExtractValueTypeFromPromise<TPromise extends Promise<unknown>> =
 	TPromise extends Promise<infer TValue> ? TValue : never;
+
+/** Used for ensuring a class has the static methods required in `TStaticProps` */
+export type Implements<
+	TStaticProps,
+	TClassConstructor extends TStaticProps,
+> = TClassConstructor;
