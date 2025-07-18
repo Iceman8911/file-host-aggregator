@@ -45,7 +45,7 @@ const FILE_VIEW_SETTINGS_SAVE_PATH = "settings/file-view-settings.json";
 const defaultFileViewSettings: Readonly<FileView_Settings> = {
 	iconSize: "M",
 	isRefreshing: false,
-	mode: "grid-1",
+	mode: "list",
 	pathData: { fileHost: null, relativePath: ROOT_PATH },
 	// Sort alpabetically by default
 	sorting: { order: "asc", param: "name" },
