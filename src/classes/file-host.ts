@@ -230,13 +230,7 @@ export abstract class FileHost {
 	 *  @param path - ensure that the path given to it is relative to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
 	async getDirContents(
-		path: Readonly<AbsoluteFilePath>,
-	): Promise<[FileHostFile] | null>;
-	async getDirContents(
 		path: Readonly<AbsoluteDirectoryPath>,
-	): Promise<FileOrDirectory[] | null>;
-	async getDirContents(
-		path: Readonly<AbsoluteFileOrDirectoryPath>,
 	): Promise<FileOrDirectory[] | null> {
 		const tempResult: FileOrDirectory[] = [];
 
@@ -245,14 +239,6 @@ export abstract class FileHost {
 		const cachedResult = this._dirContentCache.get(parsedPath);
 
 		if (cachedResult !== undefined) return cachedResult;
-
-		if (await hfs.isFile(parsedPath)) {
-			const filePath = path as AbsoluteFilePath;
-
-			const possibleFile = await this.getFile(filePath);
-
-			if (possibleFile) return [possibleFile];
-		}
 
 		if (await hfs.isDirectory(parsedPath)) {
 			/** For concurrently storing the promises */
