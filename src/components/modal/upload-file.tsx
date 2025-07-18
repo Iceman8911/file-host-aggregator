@@ -3,14 +3,17 @@ import FileIcon from "lucide-solid/icons/file";
 import { createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import { createStore } from "solid-js/store";
 import { FileHost } from "~/classes/file-host";
-import { ROOT_PATH } from "~/shared/constants";
+import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/shared/constants";
 import type { FileHostImplementations } from "~/types/file-directory-file-host/file-host";
 import type {
 	AbsoluteDirectoryPath,
 	FileName,
 	RelativeDirectoryPath,
 } from "~/types/path";
-import { treatStringAsFileName } from "~/utils/file-name";
+import {
+	getExtensionFromFileName,
+	treatStringAsFileName,
+} from "~/utils/file-name";
 import {
 	convertPathToString,
 	convertStringToPath,
@@ -43,7 +46,7 @@ export default function UploadFileModal(prop: {
 	type UploadFileData = {
 		fileHost: FileHostImplementations | null;
 		relativePath: RelativeDirectoryPath | null;
-		file: Blob | null;
+		file: File | null;
 		name: FileName | null;
 	};
 	const [uploadFileData, setUploadFileData] = createStore<UploadFileData>({
@@ -219,7 +222,14 @@ export default function UploadFileModal(prop: {
 						required
 						placeholder="File Name"
 						onInput={({ target: { value } }) =>
-							setUploadFileData({ name: treatStringAsFileName(value) })
+							setUploadFileData({
+								name: treatStringAsFileName(
+									value,
+									getExtensionFromFileName(
+										uploadFileData.file?.name ?? DEFAULT_FILE_NAME,
+									),
+								),
+							})
 						}
 					/>
 				</label>
