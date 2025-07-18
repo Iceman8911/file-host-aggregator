@@ -250,7 +250,7 @@ export abstract class FileHost {
 			/** For concurrently storing the promises */
 			const filePromises: Promise<FileHostFile | null>[] = [];
 
-			const dirEntries: FileOrDirectory[] = [];
+			const dirEntryPromises: Promise<DirectoryStats>[] = [];
 
 			for await (const entry of hfs.list(parsedPath)) {
 				const { isDirectory, isFile, name: _name } = entry;
@@ -262,17 +262,31 @@ export abstract class FileHost {
 					// Collect all getFile promises without awaiting them immediately
 					filePromises.push(this.getFile(filePath));
 				} else if (isDirectory) {
-					dirEntries.push(
-						await this.getDirectoryStats([
-							...path,
-							name,
-						] as AbsoluteDirectoryPath),
+					dirEntryPromises.push(
+						this.getDirectoryStats([...path, name] as AbsoluteDirectoryPath),
 					);
 				}
 			}
 
-			// Await all file promises concurrently
-			const fetchedFiles = await Promise.allSettled(filePromises);
+			function* fileAndDirEntryGenerator() {
+				for (const filePromise of filePromises) {
+					yield filePromise;
+				}
+
+				for (const dirEntryPromise of dirEntryPromises) {
+					yield dirEntryPromise;
+				}
+			}
+
+			//Await all file promises concurrently
+
+			// Promise.allSettled can be given a generator of promises just fine, I didn't want to unnecessarily destructure it.
+			//@ts-expect-error
+			const fetchedFiles: PromiseSettledResult<
+				FileHostFile | DirectoryStats | null
+			>[] =
+				//@ts-expect-error
+				await Promise.allSettled(fileAndDirEntryGenerator());
 
 			// Process the results of the concurrent fetches
 			for (const result of fetchedFiles) {
@@ -280,8 +294,6 @@ export abstract class FileHost {
 					tempResult.push(result.value);
 				}
 			}
-
-			tempResult.push(...dirEntries); // Add the directory entries
 		}
 
 		const actualResult = tempResult.length ? tempResult : null;
