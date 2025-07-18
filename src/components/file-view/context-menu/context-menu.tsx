@@ -1,3 +1,4 @@
+import { createAsync, query } from "@solidjs/router";
 import CopyIcon from "lucide-solid/icons/copy";
 import DownloadIcon from "lucide-solid/icons/download";
 import DefaultFileIcon from "lucide-solid/icons/file";
@@ -6,6 +7,7 @@ import HardDriveIcon from "lucide-solid/icons/hard-drive";
 import InfoIcon from "lucide-solid/icons/info";
 import MoveIcon from "lucide-solid/icons/move-up-left";
 import TrashIcon from "lucide-solid/icons/trash-2";
+import NoInternetIcon from "lucide-solid/icons/wifi-off";
 import { Match, Show, Switch } from "solid-js";
 import { FileHost } from "~/classes/file-host";
 import { FileHostFile } from "~/classes/file-host-file";
@@ -13,6 +15,7 @@ import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host
 import type { RelativeFilePath } from "~/types/path";
 import { isDirectory } from "~/utils/file-directory-file-host/directory";
 import { isFileHostFile } from "~/utils/file-directory-file-host/file";
+import { gIsUserConnectedToInternet } from "~/utils/internet";
 import { downloadBlobToDisk } from "~/utils/other";
 import { FileView_Shared } from "../file-view";
 
@@ -95,6 +98,12 @@ export function FileView_ContextMenu(prop: {
 		}
 	}
 
+	const connectionQuery = query(gIsUserConnectedToInternet, "isConnected");
+
+	const hasStableInternet = createAsync(() => connectionQuery(), {
+		initialValue: false,
+	});
+
 	return (
 		<>
 			<UniqueOptions data={prop.data} />
@@ -120,14 +129,19 @@ export function FileView_ContextMenu(prop: {
 				</button>
 			</li>
 
-			<li>
+			{/* The Delete button shouldn't work offline */}
+			<li class={!hasStableInternet.latest ? "menu-disabled" : ""}>
 				<button
 					type="button"
-					class="text-error"
+					class={`text-error ${!hasStableInternet.latest ? "brightness-50" : ""}`}
 					onClick={deleteFileOrDirectoryFromDiskAndFileHost}
+					disabled={!hasStableInternet.latest}
 				>
 					<TrashIcon />
 					Delete
+					<Show when={!hasStableInternet.latest}>
+						<NoInternetIcon />
+					</Show>
 				</button>
 			</li>
 
