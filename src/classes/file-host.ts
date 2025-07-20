@@ -235,27 +235,27 @@ export abstract class FileHost {
 		return (await Promise.all(dirPromises)).filter((val) => val != null);
 	}
 
-	/** Caches the results of `.getDirContents()` */
-	private _dirContentCache = new ReactiveLRU<
-		AbsoluteFileOrDirectoryPathString,
-		FileOrDirectory[] | null
-	>(FileHost._cacheConfig);
+	// /** Caches the results of `.getDirContents()` */
+	// private _dirContentCache = new ReactiveLRU<
+	// 	AbsoluteFileOrDirectoryPathString,
+	// 	FileOrDirectory[] | null
+	// >(FileHost._cacheConfig);
 
-	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	clearDirContentCache(
-		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	) {
-		if (specificRelativePathToClear.length) {
-			specificRelativePathToClear.forEach((path) =>
-				this._dirContentCache.delete(
-					convertPathToString(this.getAbsolutePathFromRelativePath(path)),
-				),
-			);
-		} else {
-			// Just clear the entire cache
-			this._dirContentCache.clear();
-		}
-	}
+	// /** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
+	// clearDirContentCache(
+	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
+	// ) {
+	// 	if (specificRelativePathToClear.length) {
+	// 		specificRelativePathToClear.forEach((path) =>
+	// 			this._dirContentCache.delete(
+	// 				convertPathToString(this.getAbsolutePathFromRelativePath(path)),
+	// 			),
+	// 		);
+	// 	} else {
+	// 		// Just clear the entire cache
+	// 		this._dirContentCache.clear();
+	// 	}
+	// }
 
 	/** Returns all the files and directories in the directory at the path given.
 	 *
@@ -268,9 +268,9 @@ export abstract class FileHost {
 
 		const parsedPath = convertPathToString(path);
 
-		const cachedResult = this._dirContentCache.get(parsedPath);
+		// const cachedResult = this._dirContentCache.get(parsedPath);
 
-		if (cachedResult !== undefined) return cachedResult;
+		// if (cachedResult !== undefined) return cachedResult;
 
 		if (await hfs.isDirectory(parsedPath)) {
 			/** For concurrently storing the promises */
@@ -324,7 +324,8 @@ export abstract class FileHost {
 
 		const actualResult = tempResult.length ? tempResult : null;
 
-		this._dirContentCache.set(parsedPath, actualResult);
+		console.log(actualResult);
+		// this._dirContentCache.set(parsedPath, actualResult);
 
 		return actualResult;
 	}
@@ -357,25 +358,25 @@ export abstract class FileHost {
 		return recursivelyGetDirContents(path, []);
 	}
 
-	private _directoryStatsCache = new QuickLRU<
-		AbsoluteDirectoryPathString,
-		DirectoryStats
-	>(FileHost._cacheConfig);
+	// private _directoryStatsCache = new QuickLRU<
+	// 	AbsoluteDirectoryPathString,
+	// 	DirectoryStats
+	// >(FileHost._cacheConfig);
 
-	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	clearDirectoryStatsCache(
-		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	) {
-		if (specificRelativePathToClear.length) {
-			specificRelativePathToClear.forEach((path) =>
-				this._directoryStatsCache.delete(
-					convertPathToString(this.getAbsolutePathFromRelativePath(path)),
-				),
-			);
-		} else {
-			this._directoryStatsCache.clear();
-		}
-	}
+	// /** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
+	// clearDirectoryStatsCache(
+	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
+	// ) {
+	// 	if (specificRelativePathToClear.length) {
+	// 		specificRelativePathToClear.forEach((path) =>
+	// 			this._directoryStatsCache.delete(
+	// 				convertPathToString(this.getAbsolutePathFromRelativePath(path)),
+	// 			),
+	// 		);
+	// 	} else {
+	// 		this._directoryStatsCache.clear();
+	// 	}
+	// }
 
 	/** Returns some metadata about a directory, since they aren't their own classes */
 	async getDirectoryStats(
@@ -387,9 +388,9 @@ export abstract class FileHost {
 		): Promise<DirectoryStats> => {
 			const directoryPathString = convertPathToString(directoryPath);
 
-			const cachedStats = this._directoryStatsCache.get(directoryPathString);
+			// const cachedStats = this._directoryStatsCache.get(directoryPathString);
 
-			if (cachedStats) return cachedStats;
+			// if (cachedStats) return cachedStats;
 
 			const children = await this.getDirContents(directoryPath);
 
@@ -429,7 +430,7 @@ export abstract class FileHost {
 				}
 			}
 
-			this._directoryStatsCache.set(directoryPathString, accumulatedStats);
+			// this._directoryStatsCache.set(directoryPathString, accumulatedStats);
 
 			return accumulatedStats;
 		};
@@ -444,14 +445,14 @@ export abstract class FileHost {
 		});
 	}
 
-	/** Clears specific entries in the catches or all the caches */
-	clearAllCaches(
-		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	) {
-		this.clearDirContentCache(...specificRelativePathToClear);
+	// /** Clears specific entries in the catches or all the caches */
+	// clearAllCaches(
+	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
+	// ) {
+	// 	this.clearDirContentCache(...specificRelativePathToClear);
 
-		this.clearDirectoryStatsCache(...specificRelativePathToClear);
-	}
+	// 	this.clearDirectoryStatsCache(...specificRelativePathToClear);
+	// }
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
 	 *

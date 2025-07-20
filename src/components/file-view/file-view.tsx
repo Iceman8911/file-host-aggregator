@@ -114,18 +114,18 @@ export const FileView_Shared = {
 export default function FileView() {
 	const fileHostArray = () => Array.from(FileHost.collection.values());
 
-	// Loading up the file hosts' root would take roughly 600ms ~ 3000ms per host so it'll be best to cache it beforehand
-	onMount(async () => {
-		const cacheFileHostRootContents = async () => {
-			const promises = fileHostArray().map((host) =>
-				host.getDirContents([...host.root(), ...ROOT_PATH]),
-			);
+	// // Loading up the file hosts' root would take roughly 600ms ~ 3000ms per host so it'll be best to cache it beforehand
+	// onMount(async () => {
+	// 	const cacheFileHostRootContents = async () => {
+	// 		const promises = fileHostArray().map((host) =>
+	// 			host.getDirContents([...host.root(), ...ROOT_PATH]),
+	// 		);
 
-			return await Promise.all(promises);
-		};
+	// 		return await Promise.all(promises);
+	// 	};
 
-		await cacheFileHostRootContents();
-	});
+	// 	await cacheFileHostRootContents();
+	// });
 
 	async function serializeAndSaveFileViewSettings() {
 		const clone = { ...unwrap(fileViewSettings) };

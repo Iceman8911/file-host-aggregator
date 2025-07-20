@@ -135,49 +135,48 @@ export class MEGASyncFileHost extends FileHost {
 		try {
 			const _storage = await this._getStorage();
 
-			return Promise.all([this._getFolder(path, _storage.root),  file.arrayBuffer()]).then(
+			return Promise.all([
+				this._getFolder(path, _storage.root),
+				file.arrayBuffer(),
+			]).then(async ([folder, buffer]) => {
+				const bufferSize = buffer.maxByteLength;
 
-			async ([folder, buffer])=>{
+				const uploadedFile = (await folder.upload(
+					{ name, size: bufferSize },
+					//@ts-expect-error This is actually alright, the type is justed botched
+					new Uint8Array(buffer),
+				).complete) as MutableFile;
 
-			const bufferSize = buffer.maxByteLength;
+				const fileName = treatStringAsFileName(
+					uploadedFile.name ?? DEFAULT_FILE_NAME,
+				);
 
-			const uploadedFile = (await folder.upload(
-				{ name, size: bufferSize },
-				//@ts-expect-error This is actually alright, the type is justed botched
-				new Uint8Array(buffer),
-			).complete) as MutableFile;
+				const absoluteFilePath = this.getAbsolutePathFromRelativePath([
+					...path,
+					fileName,
+				]);
 
-			const fileName = treatStringAsFileName(
-				uploadedFile.name ?? DEFAULT_FILE_NAME,
-			);
+				const fileUrl = new URL(await uploadedFile.link({ noKey: false }));
 
-			const absoluteFilePath = this.getAbsolutePathFromRelativePath([
-				...path,
-				fileName,
-			])
+				// Create a new file host instance but no need to await it since it's not relevant to the returned value.
+				await FileHostFile.init([
+					{
+						dateCreated: new Date(uploadedFile.createdAt),
+						url: fileUrl,
+						name: fileName,
+						absolutePath: absoluteFilePath,
+						size: uploadedFile.size ?? 0,
+					},
+				]);
 
-			const fileUrl = new URL(await uploadedFile.link({ noKey: false }));
+				// // Clear the cache for the directory
+				// this.clearAllCaches(MEGASyncFileHost.getParentDirectoryFromPath(absoluteFilePath))
 
-			// Create a new file host instance but no need to await it since it's not relevant to the returned value.
-			await FileHostFile.init([
-				{
-					dateCreated: new Date(uploadedFile.createdAt),
-					url: fileUrl,
-					name: fileName,
-					absolutePath: absoluteFilePath,
-					size: uploadedFile.size ?? 0,
-				},
-			])
-
-			// Clear the cache for the directory
-			this.clearAllCaches(MEGASyncFileHost.getParentDirectoryFromPath(absoluteFilePath))
-
-			return {
-				state: "success",
-				result: fileUrl,
-			};
-			}
-			)
+				return {
+					state: "success",
+					result: fileUrl,
+				};
+			});
 		} catch (e) {
 			return { state: "error", error: e };
 		}
@@ -281,8 +280,8 @@ export class MEGASyncFileHost extends FileHost {
 			}
 		}
 
-		this.clearDirContentCache();
-		this.clearDirectoryStatsCache();
+		// this.clearDirContentCache();
+		// this.clearDirectoryStatsCache();
 	}
 
 	private async _getAccountInfo() {
@@ -323,10 +322,10 @@ export class MEGASyncFileHost extends FileHost {
 			convertPathToString(this.getAbsolutePathFromRelativePath(fileOrDir)),
 		);
 
-		const parentDirectory =
-			MEGASyncFileHost.getParentDirectoryFromPath(fileOrDir);
-		this.clearDirContentCache(parentDirectory);
-		this.clearDirectoryStatsCache(parentDirectory);
+		// const parentDirectory =
+		// 	MEGASyncFileHost.getParentDirectoryFromPath(fileOrDir);
+		// this.clearDirContentCache(parentDirectory);
+		// this.clearDirectoryStatsCache(parentDirectory);
 
 		return true;
 	}
