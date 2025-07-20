@@ -298,8 +298,11 @@ export class MEGASyncFileHost extends FileHost {
 		}
 
 		const info = await (await this._getStorage()).getAccountInfo();
+
 		this._accountInfoCache = { cachedOn: new Date(), info };
+
 		this.save();
+
 		return info;
 	}
 
@@ -320,11 +323,12 @@ export class MEGASyncFileHost extends FileHost {
 		const fileToDelete = _storage.root.navigate([...fileOrDir]);
 		if (!fileToDelete) return false;
 
-		await fileToDelete.delete(permanent);
-
-		await this._deleteLocalFileOrDirectory(
-			this.getAbsolutePathFromRelativePath(fileOrDir),
-		);
+		await Promise.allSettled([
+			fileToDelete.delete(permanent),
+			this._deleteLocalFileOrDirectory(
+				this.getAbsolutePathFromRelativePath(fileOrDir),
+			),
+		]);
 
 		return true;
 	}
