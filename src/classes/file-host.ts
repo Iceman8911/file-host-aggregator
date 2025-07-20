@@ -1,7 +1,6 @@
 import { hfs } from "@humanfs/web";
 import { ReactiveMap } from "@solid-primitives/map";
 import { stringify } from "@worker-tools/structured-json";
-import QuickLRU from "quick-lru";
 import {
 	DEFAULT_FILE_HOST_EXTENSION,
 	FILE_HOST_ROOT,
@@ -16,9 +15,7 @@ import type {
 import type { ResultType } from "~/types/generics";
 import type {
 	AbsoluteDirectoryPath,
-	AbsoluteDirectoryPathString,
 	AbsoluteFileOrDirectoryPath,
-	AbsoluteFileOrDirectoryPathString,
 	AbsoluteFilePath,
 	AnyDirectoryPath,
 	AnyFileOrDirectoryPath,
@@ -26,16 +23,16 @@ import type {
 	RelativeFileOrDirectoryPath,
 	RelativeFilePath,
 } from "~/types/path";
-import { treatStringAsFileName } from "~/utils/file-name";
+import { directoryCacheService } from "~/utils/file-directory-file-host/cache";
 import { generateUUID } from "~/utils/other";
 import {
 	convertPathToString,
 	convertStringToPath,
+	getNameFromPath,
 	isAbsolutePath,
 	isFilePath,
 } from "~/utils/path";
 import { FileHostFile } from "./file-host-file";
-import { ReactiveLRU } from "./reactive-lru-cache";
 
 // type ReadonlyFileHostFile = Readonly<FileHostFile>;
 type NullishReadonlyFileHostFile = Readonly<FileHostFile | null>;
@@ -122,7 +119,10 @@ export abstract class FileHost {
 		return filePath.slice(0, -1);
 	}
 
-	/** Deletes the file host and all it's contents from the disk and memory. */
+	/** Deletes the file host and all it's contents from the disk and memory.
+	 *
+	 * TODO: Integrate cache clearing
+	 */
 	async deleteInstance(): Promise<void> {
 		FileHost.collection.delete(this.id);
 
@@ -235,224 +235,102 @@ export abstract class FileHost {
 		return (await Promise.all(dirPromises)).filter((val) => val != null);
 	}
 
-	// /** Caches the results of `.getDirContents()` */
-	// private _dirContentCache = new ReactiveLRU<
-	// 	AbsoluteFileOrDirectoryPathString,
-	// 	FileOrDirectory[] | null
-	// >(FileHost._cacheConfig);
-
-	// /** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	// clearDirContentCache(
-	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	// ) {
-	// 	if (specificRelativePathToClear.length) {
-	// 		specificRelativePathToClear.forEach((path) =>
-	// 			this._dirContentCache.delete(
-	// 				convertPathToString(this.getAbsolutePathFromRelativePath(path)),
-	// 			),
-	// 		);
-	// 	} else {
-	// 		// Just clear the entire cache
-	// 		this._dirContentCache.clear();
-	// 	}
-	// }
-
-	/** Returns all the files and directories in the directory at the path given.
+	/** Returns all the files and **directory stats** in the directory at the path given.
 	 *
 	 *  @param path - ensure that the path given to it is absolute to the OPFS root
 	 * 	@returns `null` if the directory doesn't exist */
-	async getDirContents(
+	async scanDirectory(
 		path: Readonly<AbsoluteDirectoryPath>,
-	): Promise<Readonly<FileOrDirectory[] | null>> {
-		const tempResult: FileOrDirectory[] = [];
+	): Promise<ReadonlyArray<FileOrDirectory>> {
+		const directoryPaths = await directoryCacheService.getChildren(path);
 
-		const parsedPath = convertPathToString(path);
+		const fileOrDirectoryPromises = directoryPaths.reduce<
+			Array<Promise<FileOrDirectory | null>>
+		>((acc, val) => {
+			if (val.type === "file") {
+				const filePath = convertStringToPath(val.path);
 
-		// const cachedResult = this._dirContentCache.get(parsedPath);
+				// Collect all promises without awaiting them immediately
+				acc.push(this.getFile(filePath));
+			} else {
+				const directoryPath = convertStringToPath(val.path);
 
-		// if (cachedResult !== undefined) return cachedResult;
-
-		if (await hfs.isDirectory(parsedPath)) {
-			/** For concurrently storing the promises */
-			const filePromises: Promise<FileHostFile | null>[] = [];
-
-			const dirEntryPromises: Promise<DirectoryStats>[] = [];
-
-			for await (const entry of hfs.list(parsedPath)) {
-				const { isDirectory, isFile, name: _name } = entry;
-				const name = isFile ? treatStringAsFileName(_name) : _name;
-
-				if (isFile) {
-					const filePath = [...path, name] as AbsoluteFilePath;
-
-					// Collect all getFile promises without awaiting them immediately
-					filePromises.push(this.getFile(filePath));
-				} else if (isDirectory) {
-					dirEntryPromises.push(
-						this.getDirectoryStats([...path, name] as AbsoluteDirectoryPath),
-					);
-				}
+				// Collect all promises without awaiting them immediately
+				acc.push(this.getDirectoryStats(directoryPath));
 			}
 
-			function* fileAndDirEntryGenerator() {
-				for (const filePromise of filePromises) {
-					yield filePromise;
-				}
+			return acc;
+		}, []);
 
-				for (const dirEntryPromise of dirEntryPromises) {
-					yield dirEntryPromise;
-				}
+		const val = (await Promise.allSettled(fileOrDirectoryPromises)).reduce<
+			FileOrDirectory[]
+		>((acc, val) => {
+			if (val.status === "fulfilled" && val.value) {
+				acc.push(val.value);
 			}
 
-			//Await all file promises concurrently
+			return acc;
+		}, []);
 
-			// Promise.allSettled can be given a generator of promises just fine, I didn't want to unnecessarily destructure it.
-			//@ts-expect-error
-			const fetchedFiles: PromiseSettledResult<
-				FileHostFile | DirectoryStats | null
-			>[] =
-				//@ts-expect-error
-				await Promise.allSettled(fileAndDirEntryGenerator());
+		return val;
+	}
 
-			// Process the results of the concurrent fetches
-			for (const result of fetchedFiles) {
-				if (result.status === "fulfilled" && result.value) {
-					tempResult.push(result.value);
-				}
+	/** Returns a generator of all child and descendant files in the given directory path. **NO DIRECTORIES** */
+	async *scanDirectoryForDescendantFiles(
+		path: Readonly<AbsoluteDirectoryPath>,
+	): AsyncGenerator<FileHostFile> {
+		const descendants = directoryCacheService.getDescendants(path);
+
+		for await (const entry of descendants) {
+			if (entry.type === "file") {
+				const file = await this.getFile(convertStringToPath(entry.path));
+
+				if (file) yield file;
 			}
 		}
-
-		const actualResult = tempResult.length ? tempResult : null;
-
-		console.log(actualResult);
-		// this._dirContentCache.set(parsedPath, actualResult);
-
-		return actualResult;
 	}
-
-	/** Like `.getDirContents` but recursive :p */
-	async getDirContentsRecursively(
-		path: Readonly<AbsoluteDirectoryPath>,
-	): Promise<FileOrDirectory[] | null> {
-		const recursivelyGetDirContents = async (
-			currentPath: Readonly<AbsoluteDirectoryPath>,
-			accumulatedContents: FileOrDirectory[],
-		): Promise<FileOrDirectory[] | null> => {
-			const contents = await this.getDirContents(currentPath);
-
-			if (!contents) return accumulatedContents;
-
-			for (const child of contents) {
-				if (child instanceof FileHostFile) {
-					accumulatedContents.push(child);
-				} else {
-					accumulatedContents.push(child);
-
-					await recursivelyGetDirContents(child.path, accumulatedContents);
-				}
-			}
-
-			return accumulatedContents;
-		};
-
-		return recursivelyGetDirContents(path, []);
-	}
-
-	// private _directoryStatsCache = new QuickLRU<
-	// 	AbsoluteDirectoryPathString,
-	// 	DirectoryStats
-	// >(FileHost._cacheConfig);
-
-	// /** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
-	// clearDirectoryStatsCache(
-	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	// ) {
-	// 	if (specificRelativePathToClear.length) {
-	// 		specificRelativePathToClear.forEach((path) =>
-	// 			this._directoryStatsCache.delete(
-	// 				convertPathToString(this.getAbsolutePathFromRelativePath(path)),
-	// 			),
-	// 		);
-	// 	} else {
-	// 		this._directoryStatsCache.clear();
-	// 	}
-	// }
 
 	/** Returns some metadata about a directory, since they aren't their own classes */
 	async getDirectoryStats(
 		directoryPath: AbsoluteDirectoryPath,
 	): Promise<DirectoryStats> {
-		const recursivelyGetDirectoryStats = async (
-			directoryPath: Readonly<AbsoluteDirectoryPath>,
-			accumulatedStats: DirectoryStats,
-		): Promise<DirectoryStats> => {
-			const directoryPathString = convertPathToString(directoryPath);
+		const descendants = directoryCacheService.getDescendants(directoryPath);
 
-			// const cachedStats = this._directoryStatsCache.get(directoryPathString);
+		let fileCount = 0;
+		let folderCount = 0;
+		const filePromises: Promise<FileHostFile | null>[] = [];
 
-			// if (cachedStats) return cachedStats;
-
-			const children = await this.getDirContents(directoryPath);
-
-			if (!children) return accumulatedStats;
-
-			for (const child of children) {
-				if (child instanceof FileHostFile) {
-					accumulatedStats.size += child.metadata.size;
-
-					accumulatedStats.fileCount++;
-					if (child.metadata.dateCreated > accumulatedStats.dateEdited) {
-						accumulatedStats.dateEdited = child.metadata.dateCreated;
-					}
-				} else {
-					accumulatedStats.folderCount++;
-
-					const childPath: AbsoluteDirectoryPath = [
-						...directoryPath,
-						child.name,
-					];
-					accumulatedStats.path = [...directoryPath];
-
-					const childStats = await recursivelyGetDirectoryStats(childPath, {
-						...accumulatedStats,
-						path: childPath,
-					});
-
-					accumulatedStats.size += childStats.size;
-
-					accumulatedStats.fileCount += childStats.fileCount;
-
-					accumulatedStats.folderCount += childStats.folderCount;
-
-					if (childStats.dateEdited > accumulatedStats.dateEdited) {
-						accumulatedStats.dateEdited = childStats.dateEdited;
-					}
-				}
+		for await (const entry of descendants) {
+			if (entry.type === "file") {
+				fileCount++;
+				filePromises.push(this.getFile(convertStringToPath(entry.path)));
+			} else {
+				folderCount++;
 			}
+		}
 
-			// this._directoryStatsCache.set(directoryPathString, accumulatedStats);
+		return (await Promise.allSettled(filePromises)).reduce<DirectoryStats>(
+			(acc, val) => {
+				if (val.status === "fulfilled" && val.value) {
+					acc.dateEdited =
+						val.value.metadata.dateCreated > acc.dateEdited
+							? val.value.metadata.dateCreated
+							: acc.dateEdited;
+					acc.size += val.value.metadata.size;
+				}
 
-			return accumulatedStats;
-		};
-
-		return recursivelyGetDirectoryStats(directoryPath, {
-			dateEdited: new Date(0),
-			fileCount: 0,
-			folderCount: 0,
-			name: directoryPath[directoryPath.length - 1],
-			path: directoryPath,
-			size: 0,
-		});
+				return acc;
+			},
+			{
+				dateEdited: new Date(0),
+				fileCount,
+				folderCount,
+				name: getNameFromPath(directoryPath),
+				path: directoryPath,
+				size: 0,
+			},
+		);
 	}
-
-	// /** Clears specific entries in the catches or all the caches */
-	// clearAllCaches(
-	// 	...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
-	// ) {
-	// 	this.clearDirContentCache(...specificRelativePathToClear);
-
-	// 	this.clearDirectoryStatsCache(...specificRelativePathToClear);
-	// }
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
 	 *

@@ -16,7 +16,7 @@ import { convertPathToString } from "../path";
 export async function initFileHosts(): Promise<
 	ReadonlyArray<FileHostImplementations>
 > {
-	const fileHosts: Array<FileHostImplementations> = [];
+	const fileHosts: Array<Promise<FileHostImplementations>> = [];
 	const { root: fileHostRoot } = FileHost;
 
 	// Load all file hosts from the disk
@@ -34,7 +34,7 @@ export async function initFileHosts(): Promise<
 			switch (type) {
 				case FILE_HOSTS.MEGA: {
 					const { MEGASyncFileHost } = await import("~/classes/mega-sync");
-					const instance = await MEGASyncFileHost.init({
+					const instance = MEGASyncFileHost.init({
 						...props,
 						restore: true,
 					});
@@ -45,7 +45,7 @@ export async function initFileHosts(): Promise<
 		}
 	}
 
-	return fileHosts;
+	return Promise.all(fileHosts);
 }
 
 export function isFileHost(

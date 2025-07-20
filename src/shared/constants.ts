@@ -10,3 +10,7 @@ export const DEFAULT_FILE_NAME = `???.${DEFAULT_FILE_EXTENSION}`;
 export const FILE_ITERATOR_IGNORE_SUFFIX = "__IGNORE";
 
 export const FILE_HOST_ROOT = "_file_host";
+
+/** In GB */
+export const DEVICE_MEMORY =
+	(navigator as unknown as { deviceMemory: number }).deviceMemory ?? 4;

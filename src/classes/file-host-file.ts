@@ -12,83 +12,15 @@ import type {
 	RelativeDirectoryPath,
 	RelativeFilePath,
 } from "~/types/path";
+import {
+	fileCacheService,
+	fileContentCacheService,
+} from "~/utils/file-directory-file-host/cache";
 import { getExtensionFromFileName } from "~/utils/file-name";
 import { gIsUserConnectedToInternet } from "~/utils/internet";
 import { downloadBlobToDisk } from "~/utils/other";
 import { convertPathToString } from "~/utils/path";
 import { FileHost } from "./file-host";
-import { ReactiveLRU } from "./reactive-lru-cache";
-
-/** For managing the cache containing the actual file content.
- */
-const fileContentCacheService = {
-	/** Indexed with the absolute path of the file (converted to a string) + `._blobDataExt`
-	 *
-	 * TODO: adjust the cache to prioritise keeping larger files in cache longer, up to a storage limit
-	 */
-	_cache: new QuickLRU<string, Blob>({
-		maxSize: 50,
-		maxAge: 30000,
-	}),
-
-	/** File extension appended to the absolute path string so there won't be collisions / unnecessary overwrites with the associated file's metadat */
-	_blobDataExt: "blob",
-
-	/** When data is requested, the cache is first searched, then the OPFS (which is then added to the cache), otherwise, returns `null` */
-	async get(path: AbsoluteFilePath): Promise<Blob | null> {
-		const pathToStoredBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
-
-		const cachedData = this._cache.get(pathToStoredBlobData);
-
-		if (cachedData) {
-			return cachedData;
-		} else {
-			const storedDataInFileSystem = await hfs.bytes(pathToStoredBlobData);
-
-			if (storedDataInFileSystem) {
-				const blob = new Blob([storedDataInFileSystem]);
-
-				this._cache.set(pathToStoredBlobData, blob);
-
-				return blob;
-			}
-
-			return null;
-		}
-	},
-
-	/** Adds the blob to the cache and then the disk
-	 *
-	 * @returns the stored blob
-	 */
-	async set(path: AbsoluteFilePath, data: Blob): Promise<Blob> {
-		const pathToStoreBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
-
-		this._cache.set(pathToStoreBlobData, data);
-
-		await hfs.write(pathToStoreBlobData, await data.arrayBuffer());
-
-		return data;
-	},
-
-	/** Removes the blob from cache and disk
-	 *
-	 * @returns an object containing booleans indicating successful deletions
-	 */
-	async delete(
-		path: AbsoluteFilePath,
-	): Promise<Readonly<{ cache: boolean; disk: boolean }>> {
-		const pathToDeleteBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
-
-		return {
-			cache: this._cache.delete(pathToDeleteBlobData),
-			disk: await hfs.delete(pathToDeleteBlobData),
-		};
-	},
-} as const;
 
 const { mime } = await import("./mime");
 
@@ -257,15 +189,6 @@ type NullishReadonlyFileHostFile = Readonly<FileHostFile | null>;
 export class FileHostFile {
 	constructor(readonly metadata: Readonly<FileHostFileMetadata>) {}
 
-	/** Indexed with the absolute path (converted to a string) */
-	private static readonly _collection = new ReactiveLRU<
-		AbsoluteFilePathString,
-		FileHostFile
-	>({
-		maxSize: 100,
-		maxAge: 60000,
-	});
-
 	/** This returns an already existing instance of the class, either from the cache, or the disk
 	 *
 	 * You should always be using this if you require a previously created instance externally
@@ -273,17 +196,7 @@ export class FileHostFile {
 	static async getInstance(
 		path: AbsoluteFilePath,
 	): Promise<NullishReadonlyFileHostFile> {
-		const pathString = convertPathToString(path);
-
-		const cachedInstance = FileHostFile._collection.get(pathString);
-
-		if (cachedInstance) {
-			return cachedInstance;
-		}
-		// init a new instance using the appropriate data from the OPFS
-		else {
-			return FileHostFile._initFromDisk(path);
-		}
+		return fileCacheService.get(path);
 	}
 
 	/** Use this to initialize a new instance
@@ -293,17 +206,16 @@ export class FileHostFile {
 	 */
 	static async init(
 		metadataArgs: ConstructorParameters<typeof FileHostFileMetadata>,
+		blobData?: Blob,
 	): Promise<ReadonlyFileHostFile> {
 		const createdClass = new FileHostFile(
 			await FileHostFileMetadata.init(...metadataArgs),
 		);
 
-		const createdClassAbsolutePathString = convertPathToString(
-			createdClass.metadata.absolutePath,
-		);
+		const createdClassAbsolutePath = createdClass.metadata.absolutePath;
 
-		const existingClassIfAny = FileHostFile._collection.get(
-			createdClassAbsolutePathString,
+		const existingClassIfAny = await FileHostFile.getInstance(
+			createdClassAbsolutePath,
 		);
 
 		if (
@@ -311,10 +223,11 @@ export class FileHostFile {
 			createdClass.metadata.dateCreated >
 				existingClassIfAny.metadata.dateCreated
 		) {
-			FileHostFile._collection.set(
-				createdClassAbsolutePathString,
-				createdClass,
-			);
+			fileCacheService.set(createdClass);
+
+			if (blobData) {
+				fileContentCacheService.set(createdClassAbsolutePath, blobData);
+			}
 
 			return createdClass;
 		}
@@ -323,13 +236,19 @@ export class FileHostFile {
 	}
 
 	/** Load up a single instance (if any) based off the absolute path in the opfs */
-	private static async _initFromDisk(
+	static async loadFromDisk(
 		path: AbsoluteFilePath,
 	): Promise<NullishReadonlyFileHostFile> {
 		const restoredMetadata = await FileHostFileMetadata.loadFromDisk(path);
 
 		if (restoredMetadata) {
-			return FileHostFile.init([restoredMetadata]);
+			// Create instance directly instead of calling init() to avoid circular reference
+			const instance = new FileHostFile(restoredMetadata);
+
+			// Add to cache directly since we're loading from disk
+			fileCacheService.set(instance);
+
+			return instance;
 		} else {
 			return null;
 		}
@@ -379,7 +298,7 @@ export class FileHostFile {
 	async delete() {
 		const absolutePath = this.metadata.absolutePath;
 
-		FileHostFile._collection.delete(convertPathToString(absolutePath));
+		fileCacheService.delete(absolutePath);
 
 		await this.metadata.delete();
 

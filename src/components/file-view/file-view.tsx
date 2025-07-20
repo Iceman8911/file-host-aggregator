@@ -194,7 +194,7 @@ export default function FileView() {
 			// Workaround for typescript to know that the function call isn't null
 			const fileHostVar = fileHost() as FileHostImplementations;
 
-			return fileHostVar.getDirContents([
+			return fileHostVar.scanDirectory([
 				...fileHostVar.root(),
 				...relativePath(),
 			]);

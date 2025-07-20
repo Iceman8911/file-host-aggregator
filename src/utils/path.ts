@@ -1,4 +1,8 @@
-import { FILE_HOST_ROOT, ROOT_PATH } from "~/shared/constants";
+import {
+	FILE_HOST_ROOT,
+	FILE_ITERATOR_IGNORE_SUFFIX,
+	ROOT_PATH,
+} from "~/shared/constants";
 import type {
 	AbsoluteDirectoryPath,
 	AbsoluteDirectoryPathString,
@@ -208,4 +212,13 @@ export function getParentDirectoryPaths(
 			return indexToSlice > indexToStopAt ? arr.slice(0, indexToSlice) : null;
 		})
 		.filter((val) => val != null);
+}
+
+/** Ensure the path isn't a temporary (.crswap) or ignored one */
+export function isPathValidForIterating(
+	path: AnyFileOrDirectoryPathString,
+): boolean {
+	return (
+		!path.endsWith(FILE_ITERATOR_IGNORE_SUFFIX) && !path.endsWith(".crswap")
+	);
 }

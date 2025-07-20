@@ -24,12 +24,10 @@ export class ReactiveLRU<TKey, TValue> {
 	}
 
 	get(key: TKey): TValue | undefined {
-		const value = this._lru.get(key);
+		const value = this._state.get(key);
 
-		// Ensure both stores are in sync
-		if (value !== undefined && !this._state.has(key)) {
-			this._state.set(key, value);
-		}
+		// So the lru can know the entry has been recently used
+		this._lru.get(key);
 
 		return value;
 	}

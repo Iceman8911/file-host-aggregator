@@ -26,57 +26,56 @@ export function FileView_ContextMenu(prop: {
 		if (isFileHostFile(prop.data)) {
 			prop.data.downloadFileToDisk();
 		} else if (isDirectory(prop.data)) {
-			const allDirContents =
-				(await FileHost.getFileHostFromAbsolutePath(
+			const fileHost = FileHost.getFileHostFromAbsolutePath(prop.data.path);
+
+			if (fileHost) {
+				const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
+
+				const filesToArchivePromises: Array<
+					Promise<
+						{ data: ArrayBuffer; path: RelativeFilePath } | null | undefined
+					>
+				> = [];
+
+				for await (const possibleFile of fileHost.scanDirectoryForDescendantFiles(
 					prop.data.path,
-				)?.getDirContentsRecursively(prop.data.path)) ?? [];
-
-			if (!allDirContents.length) return;
-
-			const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
-
-			const filesToArchivePromises: Array<
-				Promise<
-					{ data: ArrayBuffer; path: RelativeFilePath } | null | undefined
-				>
-			> = [];
-
-			for (const possibleFile of allDirContents) {
-				if (isFileHostFile(possibleFile)) {
-					// Don't individually wait on each request
-					filesToArchivePromises.push(
-						possibleFile.getBlob().then((blob) => {
-							if (blob) {
-								blob.arrayBuffer().then((buffer) => {
-									return {
-										data: buffer,
-										path: possibleFile.metadata.relativePath,
-									};
-								});
-							} else {
-								return null;
-							}
-						}),
-					);
+				)) {
+					if (isFileHostFile(possibleFile)) {
+						// Don't individually wait on each request
+						filesToArchivePromises.push(
+							possibleFile.getBlob().then((blob) => {
+								if (blob) {
+									blob.arrayBuffer().then((buffer) => {
+										return {
+											data: buffer,
+											path: possibleFile.metadata.relativePath,
+										};
+									});
+								} else {
+									return null;
+								}
+							}),
+						);
+					}
 				}
+
+				(await Promise.allSettled(filesToArchivePromises)).forEach((result) => {
+					if (result.status === "fulfilled" && result.value) {
+						const {
+							value: { data, path },
+						} = result;
+						filesToArchive.push({
+							data,
+							path,
+						});
+					}
+				});
+
+				const { archiveFiles } = await import("~/utils/fflate-archiving");
+				const zipRes = await archiveFiles(filesToArchive);
+
+				downloadBlobToDisk(zipRes, zipRes.name);
 			}
-
-			(await Promise.allSettled(filesToArchivePromises)).forEach((result) => {
-				if (result.status === "fulfilled" && result.value) {
-					const {
-						value: { data, path },
-					} = result;
-					filesToArchive.push({
-						data,
-						path,
-					});
-				}
-			});
-
-			const { archiveFiles } = await import("~/utils/fflate-archiving");
-			const zipRes = await archiveFiles(filesToArchive);
-
-			downloadBlobToDisk(zipRes, zipRes.name);
 		}
 	}
 
