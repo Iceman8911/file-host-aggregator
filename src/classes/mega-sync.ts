@@ -159,15 +159,18 @@ export class MEGASyncFileHost extends FileHost {
 				const fileUrl = new URL(await uploadedFile.link({ noKey: false }));
 
 				// Create a new file host instance but no need to await it since it's not relevant to the returned value.
-				await FileHostFile.init([
-					{
-						dateCreated: new Date(uploadedFile.createdAt),
-						url: fileUrl,
-						name: fileName,
-						absolutePath: absoluteFilePath,
-						size: uploadedFile.size ?? 0,
-					},
-				]);
+				await FileHostFile.init(
+					[
+						{
+							dateCreated: new Date(uploadedFile.createdAt),
+							url: fileUrl,
+							name: fileName,
+							absolutePath: absoluteFilePath,
+							size: uploadedFile.size ?? 0,
+						},
+					],
+					file,
+				);
 
 				// // Clear the cache for the directory
 				// this.clearAllCaches(MEGASyncFileHost.getParentDirectoryFromPath(absoluteFilePath))

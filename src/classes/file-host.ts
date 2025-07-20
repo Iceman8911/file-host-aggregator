@@ -143,7 +143,7 @@ export abstract class FileHost {
 	/** Sometimes, the url of a file from the file host cannot be directly `fetch`ed (e.g MEGA), so this method does the required procedures and returns the file's blob if successful */
 	abstract downloadFileContent(url: URL): Promise<ResultType<Blob>>;
 
-	/** Takes a regular file and the path to upload it to.
+	/** Takes a regular file and the path to upload it to. If successful, a local copy is also created
 	 *
 	 * Returns the url to the uploaded file if successful
 	 */
