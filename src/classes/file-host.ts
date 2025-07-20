@@ -24,7 +24,6 @@ import type {
 	AnyFileOrDirectoryPath,
 	RelativeDirectoryPath,
 	RelativeFileOrDirectoryPath,
-	RelativeFileOrDirectoryPathString,
 	RelativeFilePath,
 } from "~/types/path";
 import { treatStringAsFileName } from "~/utils/file-name";
@@ -248,7 +247,9 @@ export abstract class FileHost {
 	) {
 		if (specificRelativePathToClear.length) {
 			specificRelativePathToClear.forEach((path) =>
-				this._dirContentCache.delete(convertPathToString(this.getAbsolutePathFromRelativePath(path))),
+				this._dirContentCache.delete(
+					convertPathToString(this.getAbsolutePathFromRelativePath(path)),
+				),
 			);
 		} else {
 			// Just clear the entire cache
@@ -265,8 +266,7 @@ export abstract class FileHost {
 	): Promise<Readonly<FileOrDirectory[] | null>> {
 		const tempResult: FileOrDirectory[] = [];
 
-		const parsedPath = convertPathToString(path
-		);
+		const parsedPath = convertPathToString(path);
 
 		const cachedResult = this._dirContentCache.get(parsedPath);
 
@@ -357,9 +357,10 @@ export abstract class FileHost {
 		return recursivelyGetDirContents(path, []);
 	}
 
-	private _directoryStatsCache = new QuickLRU<AbsoluteDirectoryPathString, DirectoryStats>(
-		FileHost._cacheConfig,
-	);
+	private _directoryStatsCache = new QuickLRU<
+		AbsoluteDirectoryPathString,
+		DirectoryStats
+	>(FileHost._cacheConfig);
 
 	/** Call this in the `.downloadFiles()` or `.trimOutdatedCache()` method of an implementation or whenever changes need to be reflected asap */
 	clearDirectoryStatsCache(
@@ -367,7 +368,9 @@ export abstract class FileHost {
 	) {
 		if (specificRelativePathToClear.length) {
 			specificRelativePathToClear.forEach((path) =>
-				this._directoryStatsCache.delete(convertPathToString(this.getAbsolutePathFromRelativePath(path))),
+				this._directoryStatsCache.delete(
+					convertPathToString(this.getAbsolutePathFromRelativePath(path)),
+				),
 			);
 		} else {
 			this._directoryStatsCache.clear();
@@ -442,7 +445,9 @@ export abstract class FileHost {
 	}
 
 	/** Clears specific entries in the catches or all the caches */
-	clearAllCaches(...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>) {
+	clearAllCaches(
+		...specificRelativePathToClear: ReadonlyArray<RelativeDirectoryPath>
+	) {
 		this.clearDirContentCache(...specificRelativePathToClear);
 
 		this.clearDirectoryStatsCache(...specificRelativePathToClear);

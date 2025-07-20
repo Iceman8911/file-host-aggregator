@@ -1,6 +1,7 @@
 import { hfs } from "@humanfs/web";
 import { parse, stringify } from "@worker-tools/structured-json";
 import QuickLRU from "quick-lru";
+import { FILE_ITERATOR_IGNORE_SUFFIX } from "~/shared/constants";
 import { FILE_TYPE } from "~/shared/enums";
 import type { FileHostImplementations } from "~/types/file-directory-file-host/file-host";
 import type {
@@ -36,7 +37,7 @@ const fileContentCacheService = {
 	/** When data is requested, the cache is first searched, then the OPFS (which is then added to the cache), otherwise, returns `null` */
 	async get(path: AbsoluteFilePath): Promise<Blob | null> {
 		const pathToStoredBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}` as const;
+			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
 
 		const cachedData = this._cache.get(pathToStoredBlobData);
 
@@ -63,7 +64,7 @@ const fileContentCacheService = {
 	 */
 	async set(path: AbsoluteFilePath, data: Blob): Promise<Blob> {
 		const pathToStoreBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}` as const;
+			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
 
 		this._cache.set(pathToStoreBlobData, data);
 
@@ -80,7 +81,7 @@ const fileContentCacheService = {
 		path: AbsoluteFilePath,
 	): Promise<Readonly<{ cache: boolean; disk: boolean }>> {
 		const pathToDeleteBlobData =
-			`${convertPathToString(path)}.${this._blobDataExt}` as const;
+			`${convertPathToString(path)}.${this._blobDataExt}${FILE_ITERATOR_IGNORE_SUFFIX}` as const;
 
 		return {
 			cache: this._cache.delete(pathToDeleteBlobData),
