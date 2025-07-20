@@ -213,6 +213,17 @@ export function getParentDirectoryPaths(
 		})
 		.filter((val) => val != null);
 }
+export function getDirectParentOfPath(
+	path: AbsoluteFileOrDirectoryPath,
+): AbsoluteDirectoryPath;
+export function getDirectParentOfPath(
+	path: RelativeFileOrDirectoryPath,
+): RelativeDirectoryPath;
+export function getDirectParentOfPath(
+	path: AnyFileOrDirectoryPath,
+): AnyDirectoryPath {
+	return path.slice(0, path.length - 1);
+}
 
 /** Ensure the path isn't a temporary (.crswap) or ignored one */
 export function isPathValidForIterating(

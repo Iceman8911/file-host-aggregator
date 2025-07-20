@@ -19,7 +19,7 @@ import {
 	gIsUserConnectedToInternet,
 	gThrowIfNoInternet,
 } from "~/utils/internet";
-import { convertPathToString } from "~/utils/path";
+import { convertPathToString, isFilePath } from "~/utils/path";
 import { FileHost } from "./file-host";
 import { FileHostFile } from "./file-host-file";
 
@@ -318,14 +318,10 @@ export class MEGASyncFileHost extends FileHost {
 		if (!fileToDelete) return false;
 
 		await fileToDelete.delete(permanent);
-		await hfs.delete(
-			convertPathToString(this.getAbsolutePathFromRelativePath(fileOrDir)),
-		);
 
-		// const parentDirectory =
-		// 	MEGASyncFileHost.getParentDirectoryFromPath(fileOrDir);
-		// this.clearDirContentCache(parentDirectory);
-		// this.clearDirectoryStatsCache(parentDirectory);
+		await this._deleteLocalFileOrDirectory(
+			this.getAbsolutePathFromRelativePath(fileOrDir),
+		);
 
 		return true;
 	}

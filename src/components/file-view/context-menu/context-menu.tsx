@@ -32,31 +32,25 @@ export function FileView_ContextMenu(prop: {
 				const filesToArchive: Parameters<typeof archiveFiles>[0] = [];
 
 				const filesToArchivePromises: Array<
-					Promise<
-						{ data: ArrayBuffer; path: RelativeFilePath } | null | undefined
-					>
+					Promise<{ data: ArrayBuffer; path: RelativeFilePath } | null>
 				> = [];
 
 				for await (const possibleFile of fileHost.scanDirectoryForDescendantFiles(
 					prop.data.path,
 				)) {
-					if (isFileHostFile(possibleFile)) {
-						// Don't individually wait on each request
-						filesToArchivePromises.push(
-							possibleFile.getBlob().then((blob) => {
-								if (blob) {
-									blob.arrayBuffer().then((buffer) => {
-										return {
-											data: buffer,
-											path: possibleFile.metadata.relativePath,
-										};
-									});
-								} else {
-									return null;
-								}
-							}),
-						);
-					}
+					// Don't individually wait on each request
+					filesToArchivePromises.push(
+						possibleFile.getBlob().then(async (blob) => {
+							if (blob) {
+								return {
+									data: await blob.arrayBuffer(),
+									path: possibleFile.metadata.relativePath,
+								};
+							} else {
+								return null;
+							}
+						}),
+					);
 				}
 
 				(await Promise.allSettled(filesToArchivePromises)).forEach((result) => {
@@ -64,6 +58,7 @@ export function FileView_ContextMenu(prop: {
 						const {
 							value: { data, path },
 						} = result;
+
 						filesToArchive.push({
 							data,
 							path,

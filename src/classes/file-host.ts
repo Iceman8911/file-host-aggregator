@@ -28,6 +28,7 @@ import { generateUUID } from "~/utils/other";
 import {
 	convertPathToString,
 	convertStringToPath,
+	getDirectParentOfPath,
 	getNameFromPath,
 	isAbsolutePath,
 	isFilePath,
@@ -396,4 +397,24 @@ export abstract class FileHost {
 	abstract spaceTotal(): Promise<number>;
 	/** In bytes */
 	abstract spaceUsed(): Promise<number>;
+
+	protected async _deleteLocalFileOrDirectory(
+		fileOrDirectoryPath: AbsoluteFileOrDirectoryPath,
+	) {
+		if (isFilePath(fileOrDirectoryPath)) {
+			await (
+				await this.getFile(
+					this.getAbsolutePathFromRelativePath(fileOrDirectoryPath),
+				)
+			)?.delete();
+		} else {
+			const directoryPathString = convertPathToString(fileOrDirectoryPath);
+
+			await hfs.deleteAll(directoryPathString);
+
+			directoryCacheService.clearCache(
+				getDirectParentOfPath(fileOrDirectoryPath),
+			);
+		}
+	}
 }

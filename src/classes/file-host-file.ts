@@ -13,13 +13,14 @@ import type {
 	RelativeFilePath,
 } from "~/types/path";
 import {
+	directoryCacheService,
 	fileCacheService,
 	fileContentCacheService,
 } from "~/utils/file-directory-file-host/cache";
 import { getExtensionFromFileName } from "~/utils/file-name";
 import { gIsUserConnectedToInternet } from "~/utils/internet";
 import { downloadBlobToDisk } from "~/utils/other";
-import { convertPathToString } from "~/utils/path";
+import { convertPathToString, getDirectParentOfPath } from "~/utils/path";
 import { FileHost } from "./file-host";
 
 const { mime } = await import("./mime");
@@ -120,7 +121,13 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 
 	/** Deletes any saved metadata about this instance */
 	async delete(): Promise<boolean> {
-		return hfs.delete(convertPathToString(this.absolutePath));
+		const deleteResult = await hfs.delete(
+			convertPathToString(this.absolutePath),
+		);
+
+		directoryCacheService.clearCache(getDirectParentOfPath(this.absolutePath));
+
+		return deleteResult;
 	}
 
 	private _serialize(): Readonly<string> {
@@ -129,6 +136,8 @@ class FileHostFileMetadata implements FileHostFileMetadataProps {
 
 	async saveToDisk(): Promise<void> {
 		await hfs.write(convertPathToString(this.absolutePath), this._serialize());
+
+		directoryCacheService.clearCache(getDirectParentOfPath(this.absolutePath));
 	}
 
 	private static _deserialize(
