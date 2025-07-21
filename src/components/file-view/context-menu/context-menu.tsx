@@ -15,6 +15,7 @@ import type { FileOrDirectoryOrFileHost } from "~/types/file-directory-file-host
 import type { RelativeFilePath } from "~/types/path";
 import { isDirectory } from "~/utils/file-directory-file-host/directory";
 import { isFileHostFile } from "~/utils/file-directory-file-host/file";
+import { isFileHost } from "~/utils/file-directory-file-host/file-host";
 import { gIsUserConnectedToInternet } from "~/utils/internet";
 import { downloadBlobToDisk } from "~/utils/other";
 import { FileView_Shared } from "../file-view";
@@ -74,7 +75,7 @@ export function FileView_ContextMenu(prop: {
 		}
 	}
 
-	async function deleteFileOrDirectoryFromDiskAndFileHost() {
+	async function deleteFileOrDirectoryFromDiskAndFileHostOrDeleteFileHostFromDisk() {
 		if (isFileHostFile(prop.data)) {
 			const fileHost = prop.data.metadata.fileHost;
 
@@ -89,6 +90,10 @@ export function FileView_ContextMenu(prop: {
 					FileHost.getRelativePathFromAbsolutePath(prop.data.path),
 				);
 			}
+		} else if (isFileHost(prop.data)) {
+			const fileHost = prop.data;
+
+			await fileHost.deleteInstance();
 		}
 	}
 
@@ -126,7 +131,9 @@ export function FileView_ContextMenu(prop: {
 				<button
 					type="button"
 					class={`text-error ${!hasStableInternet.latest ? "brightness-50" : ""}`}
-					onClick={deleteFileOrDirectoryFromDiskAndFileHost}
+					onClick={
+						deleteFileOrDirectoryFromDiskAndFileHostOrDeleteFileHostFromDisk
+					}
 					disabled={!hasStableInternet.latest}
 				>
 					<TrashIcon />
