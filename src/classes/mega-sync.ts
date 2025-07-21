@@ -1,4 +1,3 @@
-import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { Storage as MEGASyncStorage, File as MegaFile } from "megajs";
 import {
@@ -23,7 +22,7 @@ import {
 	gIsUserConnectedToInternet,
 	gThrowIfNoInternet,
 } from "~/utils/internet";
-import { convertPathToString, isDirectoryPath, isFilePath } from "~/utils/path";
+import { isDirectoryPath, isFilePath } from "~/utils/path";
 import { FileHost } from "./file-host";
 import { FileHostFile } from "./file-host-file";
 
