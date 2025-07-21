@@ -5,7 +5,7 @@ import {
 	DEFAULT_FOLDER_NAME,
 	ROOT_PATH,
 } from "~/shared/constants";
-import { FILE_HOSTS } from "~/shared/enums";
+import { CACHE_DURATION, FILE_HOSTS } from "~/shared/enums";
 import type {
 	ClassPropsOnly,
 	ExtractValueTypeFromPromise,
@@ -36,9 +36,6 @@ type AccountInfo = ExtractValueTypeFromPromise<
 
 export class MEGASyncFileHost extends FileHost {
 	type = FILE_HOSTS.MEGA;
-
-	/** Minimum time in milliseconds before the caches are refreshed */
-	private static readonly _refreshCacheIn = 30000;
 
 	private _accountInfoCache: { info: AccountInfo; cachedOn: Date } | null =
 		null;
@@ -369,10 +366,12 @@ export class MEGASyncFileHost extends FileHost {
 	}
 
 	private async _getAccountInfo() {
+		const REFRESH_CACHE_IN = CACHE_DURATION.MEDIUM;
+
 		if (
 			this._accountInfoCache &&
 			(Date.now() - this._accountInfoCache.cachedOn.getTime() <
-				MEGASyncFileHost._refreshCacheIn ||
+				REFRESH_CACHE_IN ||
 				!(await gIsUserConnectedToInternet()))
 		) {
 			return this._accountInfoCache.info;

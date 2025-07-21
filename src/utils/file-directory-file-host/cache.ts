@@ -3,6 +3,7 @@ import type { Options } from "quick-lru";
 import { FileHostFile } from "~/classes/file-host-file";
 import { ReactiveLRU } from "~/classes/reactive-lru-cache";
 import { DEVICE_MEMORY, FILE_ITERATOR_IGNORE_SUFFIX } from "~/shared/constants";
+import { CACHE_DURATION } from "~/shared/enums";
 import type {
 	DirectoryStats,
 	ReadonlyDirectoryStats,
@@ -24,12 +25,12 @@ import {
 
 const GENERIC_CACHE_CONFIG = {
 	maxSize: DEVICE_MEMORY * 50,
-	maxAge: 60000,
+	maxAge: CACHE_DURATION.LONG,
 } as const satisfies Options<unknown, unknown>;
 
 const FILE_CONTENT_CACHE_CONFIG = {
 	maxSize: DEVICE_MEMORY * 25,
-	maxAge: 30000,
+	maxAge: CACHE_DURATION.MEDIUM,
 } as const satisfies Options<unknown, unknown>;
 
 const FILE_CONTENT_EXTENSION = "blob";

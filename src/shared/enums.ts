@@ -31,3 +31,14 @@ export const QUERY_NAME = {
 };
 
 export type QUERY_NAME = (typeof QUERY_NAME)[keyof typeof QUERY_NAME];
+
+/** In milliseconds */
+export const CACHE_DURATION = {
+	SHORT: 15000,
+	MEDIUM: 30000,
+	LONG: 60000,
+	VERY_LONG: 180000,
+} as const;
+
+export type CACHE_DURATION =
+	(typeof CACHE_DURATION)[keyof typeof CACHE_DURATION];
