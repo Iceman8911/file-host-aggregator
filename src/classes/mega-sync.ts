@@ -343,9 +343,9 @@ export class MEGASyncFileHost extends FileHost {
 	async trimOutdatedCache(): Promise<void> {
 		const _storage = await this._getStorage();
 
-		const allFiles = await this.getAllFiles();
+		const allFiles = this.getAllFiles();
 
-		for (const file of allFiles) {
+		for await (const file of allFiles) {
 			const possibleFileOnFileHost = _storage.root.navigate([
 				...file.metadata.relativePath,
 			]);

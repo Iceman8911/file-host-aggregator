@@ -6,7 +6,10 @@ import {
 	FILE_HOST_ROOT,
 } from "~/shared/constants";
 import type { FILE_HOSTS } from "~/shared/enums";
-import type { DirectoryStats } from "~/types/file-directory-file-host/directory";
+import type {
+	DirectoryStats,
+	ReadonlyDirectoryStats,
+} from "~/types/file-directory-file-host/directory";
 import type { FileOrDirectory } from "~/types/file-directory-file-host/file-directory-file-host";
 import type {
 	FileHostID,
@@ -186,54 +189,27 @@ export abstract class FileHost {
 	}
 
 	/** Returns all the files present in the local filesystem */
-	async getAllFiles(): Promise<ReadonlyArray<FileHostFile>> {
-		const filePromises: Promise<FileHostFile | null>[] = [];
+	async *getAllFiles(): AsyncGenerator<FileHostFile> {
+		for await (const entry of directoryCacheService.getDescendants(
+			this.root(),
+		)) {
+			if (entry.type === "file") {
+				const nullishFile = await this.getFile(convertStringToPath(entry.path));
 
-		for await (const entry of hfs.walk(convertPathToString(this.root()), {
-			entryFilter: (entry) => entry.isFile,
-		})) {
-			const entryPath = convertStringToPath(entry.path);
-
-			if (isFilePath(entryPath)) {
-				filePromises.push(
-					this.getFile(
-						// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
-						[...this.root(), ...entryPath],
-					),
-				);
+				if (nullishFile) yield nullishFile;
 			}
 		}
-
-		return (await Promise.allSettled(filePromises)).reduce<FileHostFile[]>(
-			(acc, val) => {
-				if (val.status === "fulfilled" && val.value != null) {
-					acc.push(val.value);
-				}
-
-				return acc;
-			},
-			[],
-		);
 	}
 
-	/** Returns all the directories present in the local filesystem */
-	async getAllDirectories(): Promise<ReadonlyArray<DirectoryStats>> {
-		const dirPromises: Promise<DirectoryStats | null>[] = [];
-
-		const root = this.root();
-
-		for await (const entry of hfs.walk(convertPathToString(root), {
-			entryFilter: (entry) => entry.isDirectory,
-		})) {
-			dirPromises.push(
-				this.getDirectoryStats(
-					// TODO: remove this hardcoding by creating a special method for constructing a path array from strings and sub arrays
-					[...root, ...entry.path.split("/")],
-				),
-			);
+	/** Returns all the stats of directories present in the local filesystem */
+	async *getAllDirectories(): AsyncGenerator<ReadonlyDirectoryStats> {
+		for await (const entry of directoryCacheService.getDescendants(
+			this.root(),
+		)) {
+			if (entry.type === "dir") {
+				yield this.getDirectoryStats(convertStringToPath(entry.path));
+			}
 		}
-
-		return (await Promise.all(dirPromises)).filter((val) => val != null);
 	}
 
 	/** Returns all the files and **directory stats** in the directory at the path given.
@@ -294,7 +270,7 @@ export abstract class FileHost {
 	/** Returns some metadata about a directory, since they aren't their own classes */
 	async getDirectoryStats(
 		directoryPath: AbsoluteDirectoryPath,
-	): Promise<DirectoryStats> {
+	): Promise<ReadonlyDirectoryStats> {
 		const descendants = directoryCacheService.getDescendants(directoryPath);
 
 		let fileCount = 0;

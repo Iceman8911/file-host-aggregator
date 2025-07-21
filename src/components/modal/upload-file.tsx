@@ -4,6 +4,7 @@ import { createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import { createStore } from "solid-js/store";
 import { FileHost } from "~/classes/file-host";
 import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/shared/constants";
+import type { ReadonlyDirectoryStats } from "~/types/file-directory-file-host/directory";
 import type { FileHostImplementations } from "~/types/file-directory-file-host/file-host";
 import type {
 	AbsoluteDirectoryPath,
@@ -111,7 +112,15 @@ export default function UploadFileModal(prop: {
 		return (
 			<Show when={fileHostAndRelativePathToUse().fileHost}>
 				{(fileHost) => {
-					const directories = createAsync(() => fileHost().getAllDirectories());
+					const directories = createAsync(async () => {
+						const directoryStats: ReadonlyDirectoryStats[] = [];
+
+						for await (const directoryStat of fileHost().getAllDirectories()) {
+							directoryStats.push(directoryStat);
+						}
+
+						return directoryStats;
+					});
 
 					return (
 						<fieldset class="fieldset">

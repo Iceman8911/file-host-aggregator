@@ -14,3 +14,5 @@ export type DirectoryStats = {
 	/** The name of the folder */
 	name: DirectoryName;
 };
+
+export type ReadonlyDirectoryStats = Readonly<DirectoryStats>;
