@@ -40,6 +40,7 @@ export class MEGASyncFileHost extends FileHost {
 
 	/** Minimum time in milliseconds before the caches are refreshed */
 	private static readonly _refreshCacheIn = 30000;
+
 	private _accountInfoCache: { info: AccountInfo; cachedOn: Date } | null =
 		null;
 
@@ -90,6 +91,7 @@ export class MEGASyncFileHost extends FileHost {
 			| (ClassPropsOnly<MEGASyncFileHost> & { restore: true }),
 	) {
 		const { email, name, password } = arg;
+
 		const instance = new MEGASyncFileHost(name, email, password, null);
 
 		if (arg.restore) {
@@ -112,6 +114,7 @@ export class MEGASyncFileHost extends FileHost {
 		}
 
 		await instance.save();
+
 		return instance;
 	}
 
@@ -121,7 +124,9 @@ export class MEGASyncFileHost extends FileHost {
 		folderToStartFrom?: MutableFile,
 	): Promise<MutableFile> {
 		if (!folderToStartFrom) folderToStartFrom = (await this._getStorage()).root;
+
 		if (!path.length) return folderToStartFrom;
+
 		const [directoryToFindOrCreate, ...restOfDirectoryPath] = path;
 
 		const createdOrFoundDirectory =
@@ -195,15 +200,19 @@ export class MEGASyncFileHost extends FileHost {
 		onlyMetaData = false,
 	) {
 		if (onlyMetaData) return undefined;
+
 		return new Blob([await file.downloadBuffer({})]);
 	}
 
 	async downloadFileContent(url: URL): Promise<ResultType<Blob>> {
 		try {
 			const fileFromUrl = MegaFile.fromURL(url.toString());
+
 			const possibleBlob =
 				await MEGASyncFileHost._downloadFileContent(fileFromUrl);
+
 			if (!possibleBlob) throw Error("File unavailable");
+
 			return { result: possibleBlob, state: "success" };
 		} catch (e) {
 			return { error: e, state: "error" };
@@ -393,7 +402,9 @@ export class MEGASyncFileHost extends FileHost {
 		permanent = false,
 	) {
 		const _storage = await this._getStorage();
+
 		const fileToDelete = _storage.root.navigate([...fileOrDir]);
+
 		if (!fileToDelete) return false;
 
 		await Promise.allSettled([
