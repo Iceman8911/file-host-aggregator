@@ -18,6 +18,7 @@ import {
 	convertPathToString,
 	convertStringToPath,
 	getNameFromPath,
+	getParentDirectoryPaths,
 	isPathValidForIterating,
 } from "../path";
 
@@ -276,13 +277,20 @@ const directoryCacheService = {
 	clearCache(...directoriesToRefresh: ReadonlyArray<AbsoluteDirectoryPath>) {
 		directoriesToRefresh.forEach((val) => {
 			directoryEntryCache.delete(convertPathToString(val));
+
 			directoryStatCache.delete(convertPathToString(val));
+
+			// Also clear the stats of parent directories since they're reliant on the sub data
+			getParentDirectoryPaths(val).forEach((parent) =>
+				directoryStatCache.delete(convertPathToString(parent)),
+			);
 		});
 	},
 
 	/** Clears all the cached entries */
 	clearAllCaches(): void {
 		directoryEntryCache.clear();
+
 		directoryStatCache.clear();
 	},
 } as const;
