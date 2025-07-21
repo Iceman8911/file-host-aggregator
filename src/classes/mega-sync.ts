@@ -1,7 +1,11 @@
 import { hfs } from "@humanfs/web";
 import type { MutableFile } from "megajs";
 import { Storage as MEGASyncStorage, File as MegaFile } from "megajs";
-import { DEFAULT_FILE_NAME, ROOT_PATH } from "~/shared/constants";
+import {
+	DEFAULT_FILE_NAME,
+	DEFAULT_FOLDER_NAME,
+	ROOT_PATH,
+} from "~/shared/constants";
 import { FILE_HOSTS } from "~/shared/enums";
 import type {
 	ClassPropsOnly,
@@ -19,7 +23,7 @@ import {
 	gIsUserConnectedToInternet,
 	gThrowIfNoInternet,
 } from "~/utils/internet";
-import { convertPathToString, isFilePath } from "~/utils/path";
+import { convertPathToString, isDirectoryPath, isFilePath } from "~/utils/path";
 import { FileHost } from "./file-host";
 import { FileHostFile } from "./file-host-file";
 
@@ -206,31 +210,116 @@ export class MEGASyncFileHost extends FileHost {
 		}
 	}
 
+	/** To know if a given mutable file is actually the root drive / trash / inbox */
+	private async _isMutableFileSpecial(
+		mutableFile: MutableFile,
+	): Promise<
+		| { root: true; trash: false; inbox: false }
+		| { root: false; trash: true; inbox: false }
+		| { root: false; trash: false; inbox: true }
+		| { root: false; trash: false; inbox: false }
+	> {
+		const {
+			inbox: { nodeId: inboxId },
+			root: { nodeId: rootId },
+			trash: { nodeId: trashId },
+		} = await this._getStorage();
+
+		const { nodeId: mutableFileId } = mutableFile;
+
+		if (!mutableFileId) return { inbox: false, root: false, trash: false };
+		else {
+			if (mutableFileId === rootId)
+				return { inbox: false, root: true, trash: false };
+
+			if (mutableFileId === inboxId)
+				return { inbox: true, root: false, trash: false };
+
+			if (mutableFileId === trashId)
+				return { inbox: false, root: false, trash: true };
+		}
+
+		return { inbox: false, root: false, trash: false };
+	}
+
+	/** Stops at the root path / "Cloud Drive" */
+	private async _getRelativePathFromMutableFile(
+		mutableFile: MutableFile,
+	): Promise<RelativeFileOrDirectoryPath> {
+		const self = this;
+
+		async function getRelativePath(
+			mutableFile: MutableFile,
+			accumulator: RelativeFileOrDirectoryPath = mutableFile instanceof
+			MEGASyncStorage
+				? ROOT_PATH
+				: [
+						mutableFile.name ??
+							(mutableFile.directory ? DEFAULT_FOLDER_NAME : DEFAULT_FILE_NAME),
+					],
+		): Promise<RelativeFileOrDirectoryPath> {
+			const { parent } = mutableFile;
+
+			if (parent && !(await self._isMutableFileSpecial(parent)).root) {
+				return getRelativePath(parent, [
+					parent.name ?? DEFAULT_FOLDER_NAME,
+					...accumulator,
+				]);
+			}
+
+			return accumulator;
+		}
+
+		return getRelativePath(mutableFile);
+	}
+
+	/** For iterating through every file / directory structure in the MEGA drive.
+	 *
+	 * @param mutableFiles If not given, the transversal starts from the root
+	 */
+	private async *_transverseFileRefs(
+		mutableFiles?: MutableFile[],
+	): AsyncGenerator<
+		| {
+				data: MutableFile;
+				type: "dir";
+				path: RelativeDirectoryPath;
+		  }
+		| {
+				data: MutableFile;
+				type: "file";
+				path: RelativeFilePath;
+		  }
+	> {
+		const directChildfileRefs =
+			mutableFiles ?? (await this._getStorage()).filter(() => true);
+
+		for (const fileRef of directChildfileRefs) {
+			const relativePath = await this._getRelativePathFromMutableFile(fileRef);
+
+			if (!fileRef.directory && isFilePath(relativePath)) {
+				yield { data: fileRef, path: relativePath, type: "file" };
+			} else if (isDirectoryPath(relativePath)) {
+				yield { data: fileRef, path: relativePath, type: "dir" };
+
+				if (fileRef.children) yield* this._transverseFileRefs(fileRef.children);
+			}
+		}
+	}
+
 	async downloadFiles(getMetadataOnly = true): Promise<void> {
-		const _storage = await this._getStorage();
-
-		const fileRefs = _storage.filter(() => true);
-
-		const processFile = async (
+		const downloadFileData = async (
 			file: MutableFile,
-			relativePath: RelativeDirectoryPath,
+			relativePath: RelativeFilePath,
 		) => {
 			const fileName = treatStringAsFileName(file.name ?? DEFAULT_FILE_NAME);
 
 			const fileInstance = await FileHostFile.init([
 				{
 					dateCreated: new Date(file.createdAt),
-					// fileData: await MEGASyncFileHost._downloadFileContent(
-					// 	file,
-					// 	getMetadataOnly,
-					// ),
-					// fileHostId: this.id,
 					url: new URL(await file.link({ noKey: false })),
 					name: fileName,
-					absolutePath: this.getAbsolutePathFromRelativePath([
-						...relativePath,
-						fileName,
-					]),
+					absolutePath: this.getAbsolutePathFromRelativePath(relativePath),
 					size: file.size ?? 0,
 				},
 			]);
@@ -240,31 +329,15 @@ export class MEGASyncFileHost extends FileHost {
 			}
 		};
 
-		const traverse = async (node: MutableFile, path: RelativeDirectoryPath) => {
-			if (!node.directory) {
-				await processFile(node, path);
-			} else if (node.children) {
-				for (const child of node.children) {
-					await traverse(
-						child,
-						child.directory
-							? [...path, child.name ?? DEFAULT_FILE_NAME]
-							: [...path],
-					);
-				}
-			}
-		};
+		const downloadPromises: Array<Promise<unknown>> = [];
 
-		for (const ref of fileRefs) {
-			await traverse(
-				ref,
-				ref.directory
-					? [...ROOT_PATH, ref.name ?? DEFAULT_FILE_NAME]
-					: ROOT_PATH,
-			);
+		for await (const { data, path, type } of this._transverseFileRefs()) {
+			if (type === "file") downloadPromises.push(downloadFileData(data, path));
 		}
 
-		await this.trimOutdatedCache();
+		await Promise.allSettled(
+			[downloadPromises, this.trimOutdatedCache()].flat(),
+		);
 	}
 
 	async trimOutdatedCache(): Promise<void> {
