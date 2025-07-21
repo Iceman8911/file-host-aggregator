@@ -4,6 +4,10 @@ import { FileHostFile } from "~/classes/file-host-file";
 import { ReactiveLRU } from "~/classes/reactive-lru-cache";
 import { DEVICE_MEMORY, FILE_ITERATOR_IGNORE_SUFFIX } from "~/shared/constants";
 import type {
+	DirectoryStats,
+	ReadonlyDirectoryStats,
+} from "~/types/file-directory-file-host/directory";
+import type {
 	AbsoluteDirectoryPath,
 	AbsoluteDirectoryPathString,
 	AbsoluteFileOrDirectoryPathString,
@@ -13,6 +17,7 @@ import type {
 import {
 	convertPathToString,
 	convertStringToPath,
+	getNameFromPath,
 	isPathValidForIterating,
 } from "../path";
 
@@ -145,9 +150,15 @@ type DirectoryEntry =
 // type DirectoryEntryCount = { file: number; folder: number };
 
 /** Caches the absolute paths to direct child files and sub-directories for a specifc directory */
-const directoryCache = new ReactiveLRU<
+const directoryEntryCache = new ReactiveLRU<
 	AbsoluteDirectoryPathString,
 	ReadonlyArray<DirectoryEntry>
+>(GENERIC_CACHE_CONFIG);
+
+/** Caches the relevant stats for a specifc directory */
+const directoryStatCache = new ReactiveLRU<
+	AbsoluteDirectoryPathString,
+	ReadonlyDirectoryStats
 >(GENERIC_CACHE_CONFIG);
 
 /** Contains methods for getting the paths within a directory */
@@ -158,7 +169,7 @@ const directoryCacheService = {
 	): Promise<ReadonlyArray<DirectoryEntry>> {
 		const directoryPathString = convertPathToString(directory);
 
-		const cachedPathStrings = directoryCache.get(directoryPathString);
+		const cachedPathStrings = directoryEntryCache.get(directoryPathString);
 
 		if (cachedPathStrings) return cachedPathStrings;
 		else {
@@ -179,7 +190,7 @@ const directoryCacheService = {
 				}
 			}
 
-			directoryCache.set(directoryPathString, tempPaths);
+			directoryEntryCache.set(directoryPathString, tempPaths);
 
 			return tempPaths;
 		}
@@ -205,33 +216,74 @@ const directoryCacheService = {
 		}
 	},
 
-	// /** Returns the count of child and descendant files and directories */
-	// async contentCount(
-	// 	directory: AbsoluteDirectoryPath,
-	// ): Promise<DirectoryEntryCount> {
-	// 	return (
-	// 		await directoryCacheService.getDescendants(directory)
-	// 	).reduce<DirectoryEntryCount>(
-	// 		(acc, val) => {
-	// 			if (val.type === "dir") acc.folder++;
-	// 			else acc.file++;
+	/** Gets the relevant directory stats of the given directory path */
+	async getStats(
+		directoryPath: AbsoluteDirectoryPath,
+	): Promise<ReadonlyDirectoryStats> {
+		const directoryPathString = convertPathToString(directoryPath);
 
-	// 			return acc;
-	// 		},
-	// 		{ file: 0, folder: 0 } as const satisfies DirectoryEntryCount,
-	// 	);
-	// },
+		const cachedDirectoryStats = directoryStatCache.get(directoryPathString);
+
+		if (cachedDirectoryStats) return cachedDirectoryStats;
+
+		const descendants = directoryCacheService.getDescendants(directoryPath);
+
+		let fileCount = 0;
+		let folderCount = 0;
+		const filePromises: Promise<FileHostFile | null>[] = [];
+
+		for await (const entry of descendants) {
+			if (entry.type === "file") {
+				fileCount++;
+				filePromises.push(
+					FileHostFile.getInstance(convertStringToPath(entry.path)),
+				);
+			} else {
+				folderCount++;
+			}
+		}
+
+		const generatedDirectoryStats = (
+			await Promise.allSettled(filePromises)
+		).reduce<DirectoryStats>(
+			(acc, val) => {
+				if (val.status === "fulfilled" && val.value) {
+					acc.dateEdited =
+						val.value.metadata.dateCreated > acc.dateEdited
+							? val.value.metadata.dateCreated
+							: acc.dateEdited;
+					acc.size += val.value.metadata.size;
+				}
+
+				return acc;
+			},
+			{
+				dateEdited: new Date(0),
+				fileCount,
+				folderCount,
+				name: getNameFromPath(directoryPath),
+				path: directoryPath,
+				size: 0,
+			},
+		);
+
+		directoryStatCache.set(directoryPathString, generatedDirectoryStats);
+
+		return generatedDirectoryStats;
+	},
 
 	/** Clears the cached entries for the given directories */
 	clearCache(...directoriesToRefresh: ReadonlyArray<AbsoluteDirectoryPath>) {
 		directoriesToRefresh.forEach((val) => {
-			directoryCache.delete(convertPathToString(val));
+			directoryEntryCache.delete(convertPathToString(val));
+			directoryStatCache.delete(convertPathToString(val));
 		});
 	},
 
 	/** Clears all the cached entries */
 	clearAllCaches(): void {
-		directoryCache.clear();
+		directoryEntryCache.clear();
+		directoryStatCache.clear();
 	},
 } as const;
 

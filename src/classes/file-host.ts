@@ -271,42 +271,7 @@ export abstract class FileHost {
 	async getDirectoryStats(
 		directoryPath: AbsoluteDirectoryPath,
 	): Promise<ReadonlyDirectoryStats> {
-		const descendants = directoryCacheService.getDescendants(directoryPath);
-
-		let fileCount = 0;
-		let folderCount = 0;
-		const filePromises: Promise<FileHostFile | null>[] = [];
-
-		for await (const entry of descendants) {
-			if (entry.type === "file") {
-				fileCount++;
-				filePromises.push(this.getFile(convertStringToPath(entry.path)));
-			} else {
-				folderCount++;
-			}
-		}
-
-		return (await Promise.allSettled(filePromises)).reduce<DirectoryStats>(
-			(acc, val) => {
-				if (val.status === "fulfilled" && val.value) {
-					acc.dateEdited =
-						val.value.metadata.dateCreated > acc.dateEdited
-							? val.value.metadata.dateCreated
-							: acc.dateEdited;
-					acc.size += val.value.metadata.size;
-				}
-
-				return acc;
-			},
-			{
-				dateEdited: new Date(0),
-				fileCount,
-				folderCount,
-				name: getNameFromPath(directoryPath),
-				path: directoryPath,
-				size: 0,
-			},
-		);
+		return directoryCacheService.getStats(directoryPath);
 	}
 
 	/** Returns the directory that contains all files for the filehost, using it's id.
