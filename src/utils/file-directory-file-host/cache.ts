@@ -275,16 +275,29 @@ const directoryCacheService = {
 
 	/** Clears the cached entries for the given directories */
 	clearCache(...directoriesToRefresh: ReadonlyArray<AbsoluteDirectoryPath>) {
-		directoriesToRefresh.forEach((val) => {
-			directoryEntryCache.delete(convertPathToString(val));
+		// Sets are used to prevent redundant deletes
+		const entryCacheKeysToDelete = new Set<AbsoluteDirectoryPathString>();
+		const statCacheKeysToDelete = new Set<AbsoluteDirectoryPathString>();
 
-			directoryStatCache.delete(convertPathToString(val));
+		for (const directory of directoriesToRefresh) {
+			const directoryPathString = convertPathToString(directory);
+
+			entryCacheKeysToDelete.add(directoryPathString);
+			statCacheKeysToDelete.add(directoryPathString);
 
 			// Also clear the stats of parent directories since they're reliant on the sub data
-			getParentDirectoryPaths(val).forEach((parent) =>
-				directoryStatCache.delete(convertPathToString(parent)),
-			);
-		});
+			for (const parent of getParentDirectoryPaths(directory)) {
+				statCacheKeysToDelete.add(convertPathToString(parent));
+			}
+		}
+
+		for (const key of entryCacheKeysToDelete) {
+			directoryEntryCache.delete(key);
+		}
+
+		for (const key of statCacheKeysToDelete) {
+			directoryStatCache.delete(key);
+		}
 	},
 
 	/** Clears all the cached entries */
